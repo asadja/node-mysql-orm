@@ -1,0 +1,28 @@
+{
+	"name": "mysql-orm",
+	"version": "0.1.1",
+	"description": "ORM frontend for MySQL, uses JSON schema to define tables and relationships.  This supports automatic table re-generation with indexes, default values, foreign keys, reference options, query logging and more.",
+	"keywords": ["mysql", "orm", "object schema", "object relational mapping", "rest", "crud"],
+	"main": "index.js",
+	"homepage": "https://github.com/battlesnake/node-mysql-orm",
+	"author": "Mark K Cowan <mark@battlesnake.co.uk>",
+	"contributors": [
+		{ "name": "Mark K Cowan", "email": "mark@battlesnake.co.uk" }
+	],
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/battlesnake/node-mysql-orm"
+	},
+	"engines": {
+		"node": "*"
+	},
+	"dependencies": {
+		"mysql": "*",
+		"underscore": "*",
+		"async": "*",
+		"cli-color": "*"
+	},
+	"devDependencies": {
+		"read": "*"
+	}
+}
