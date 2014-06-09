@@ -12,6 +12,21 @@
 /*
  * Automtaic database / table generation
  *
+ * Schema: { $types: definitions, table: definition, table: definition, ... }
+ *
+ * Table: { [ $no_id: boolean, ] field: definition, field: definition, ... }
+ *
+ * Field:
+ *  String notation: 'type[,primary][,index][,unique][,nullable]'
+ *  Object notation: { type: 'varchar(10)', index: true, unique: false, nullable: false ... }
+ *
+ * Internal types:
+ *  ::id INTEGER PRIMARY KEY AUTO_INCREMENT
+ *
+ * Type definition examples:
+ *
+ *  $types: { 'username': 'varchar(32)', 'password': 'char(61)', 'user': ':users' }
+ *
  */
 
 var mysql = require('mysql');
@@ -37,11 +52,20 @@ function initialise_schema(orm) {
 		table.$name = tableName;
 		/* All tables must have an ID primary key */
 		if (!_(table).has('id') && !table.$no_id) {
-			table.id = { type: ':id' };
+			table.id = { type: '::id' };
 		}
 		keys(table).forEach(function (fieldName) {
 			orm.info('schema ' + Array(tableName.length+1).join(' ') + '.' + fieldName);
 			var field = table[fieldName];
+			if (_(field).isString()) {
+				var f = field.split(',');
+				field = {};
+				field.type = f.shift();
+				field.primary = _(f).contains('primary');
+				field.unique = _(f).contains('unique');
+				field.index = _(f).contains('index');
+				field.nullable = _(f).contains('nullable');
+			}
 			field.$schema = orm.schema;
 			field.$table = table;
 			field.$name = fieldName;
@@ -123,7 +147,7 @@ function column_definition(orm, field) {
 		type = orm.types[type];
 	}
 	/* Primary key */
-	if (type === ':id') {
+	if (type === '::id') {
 		type = 'INTEGER';
 		primary = true;
 	}
@@ -176,7 +200,7 @@ function column_definition(orm, field) {
 	lines.unshift(_([
 		mysql.escapeId(name),
 		type,
-		nullable && 'NOT NULL',
+		!nullable && 'NOT NULL',
 		primary && 'PRIMARY KEY AUTO_INCREMENT',
 		defaultValue && ('DEFAULT ' + mysql.escape(defaultValue))
 	]).compact().join(' '));

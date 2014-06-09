@@ -133,7 +133,7 @@ ORM.prototype.save = function (table, row, callback) {
 	var self = this;
 	async.waterfall([
 			function (callback) {
-				self.lookupForeignKeys(query, table, row, function (err, res) { row = res; callback(err); }, cols);
+				self.lookupForeignIds(query, table, row, function (err, res) { row = res; callback(err); }, cols);
 			},
 			function (callback) {
 				var updates = ' ON DUPLICATE KEY UPDATE ' + names(row)
@@ -163,6 +163,8 @@ ORM.prototype.saveMany = function (table, rows, callback) {
 /* Save sets of rows to several tables, looking up foreign keys where needed */
 ORM.prototype.saveMultipleTables = function (data, callback) {
 	var self = this;
+	console.log(data);
+	console.log(names(data));
 	this.beginTransaction(function (err, transaction) {
 		if (err) {
 			return callback(err);

@@ -36,19 +36,31 @@ function ORM(schema, defaultdata, options, onready) {
 	if (!options.database) {
 		throw new Error('Compulsory option (lol) `database` not specified');
 	}
-	if (!options.connection) {
-		throw new Error('Compulsory option (lol) `connection` not specified');
+	if (!options.mysql) {
+		throw new Error('Compulsory option (lol) `mysql` not specified');
 	}
 	this.database = options.database;
 	this.schema = schema;
 	this.types = schema.$types;
-	this.connection = options.connection;
-	this.query = this.loggedQuery(this.connection);
 	var autogen = require('./autogen');
 	autogen.initialise_schema(this);
 	async.series(
 		[
+			function (callback) {
+				self.connection = mysql.createConnection(options.mysql);
+				self.query = self.loggedQuery(self.connection);
+				callback();
+			},
 			async.apply(autogen.create_database, self, options.recreateDatabase),
+			function (callback) {
+				self.connection.end(callback);
+			},
+			function (callback) {
+				options.mysql.database = options.database;
+				self.connection = mysql.createPool(options.mysql);
+				self.query = self.loggedQuery(self.connection);
+				callback();
+			},
 			async.apply(autogen.create_tables, self, options.recreateTables),
 			function (callback) {
 				if (defaultdata && (options.recreateTables || options.recreateDatabase)) {
