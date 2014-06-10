@@ -54,4 +54,5 @@ async.waterfall([
 			return process.exit(1);
 		}
 		console.log('Tests passed!');
+		process.exit(0);
 	});
