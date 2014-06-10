@@ -21,7 +21,7 @@ module.exports.create = function (schema, defaultdata, options, onready) {
 /*
  * options:
  * 	- database: Name of database
- * 	- connection: MySQL connection
+ * 	- debug: debug mode (slow logger)
  * 	? recreateDatabase: Drop the database first
  * 	? recreateTables: Drop the tables first
  * 	? logLevel: Log level (do not set to < 1, default is highest [3])
