@@ -29,9 +29,12 @@ var schema = {
 
 	users: {
 		/* "id" field is generated automatically */
-		/* Dollar-prefix is used for metadata, e.g. default sort order */
+		/*
+		 * Dollar-prefix is used for metadata, e.g. specifying the
+		 * default sort order
+		 */
 		$sort: '+username',
-		/* This field must have a unique value */
+		/* This field must have a unique value (unique: true) */
 		username: { type: 'string', unique: true },
 		password: { type: 'password' },
 		role: { type: 'role' },
@@ -45,11 +48,17 @@ var schema = {
 	},
 
 	posts: {
-		/* Prefix a sort field by + or - to explicitly set ascending or descending sort order */
+		/*
+		 * Prefix a sort field by + or - to explicitly set ascending
+		 * or descending sort order
+		 */
 		$sort: '-date',
-		/* Set the ON UPDATE and ON DELETE actions for foreign key constraing */
+		/*
+		 * Set the ON UPDATE and ON DELETE actions for foreign key
+		 * constraint
+		 */
 		user: { type: 'user', onDelete: 'cascade', onUpdate: 'cascade' },
-		/* Index this field */
+		/* Index this field (index: true) */
 		title: { type: 'string', index: true },
 		content: { type: 'text' },
 		date: { type: 'timestamp' },
@@ -68,6 +77,12 @@ var schema = {
 
 ```node
 /* Define the initial contents of the database (optional)
+ *
+ * V8 preserves field order - which is useful since some tables depend on
+ * content in others
+ *
+ * Tables are processed in the order that they appear in this object
+ */
 var data = {
 
 	roles: [
@@ -76,7 +91,10 @@ var data = {
 		{ name: 'pleb', rights: 'lol' }
 	],
 
-	/* The auto_increment primary key `id` field is created automatically for each table */
+	/*
+	 * The auto_increment primary key `id` field is created automatically for
+	 * each table
+	 */
 	countries: [
 		{ id: 44, name: 'United Kingdom' },
 		{ id: 372, name: 'Estonia' },
@@ -87,9 +105,11 @@ var data = {
 
 	users: [
 		/*
-		 * We don't know what ID values the roles will have and we didn't explicitly specify them, but we can use the
-		 * automatic foreign-key lookup to specify roles by name instead.  Such search constraints must resolve to one
-		 * and only one record in the parent table.  Automatic lookup is also used for the country field.  Easy!
+		 * We don't know what ID values the roles will have and we didn't
+		 * explicitly specify them, but we can use the automatic foreign-key
+		 * lookup to specify roles by name instead.  Such search constraints
+		 * must resolve to one and only one record in the parent table.
+		 * Automatic lookup is also used for the country field.  Easy!
 		 */
 		{ username: 'mark', password: Array(61).join('\0'), role: { name: 'admin' }, country: { name: 'Estonia' } },
 		{ username: 'marili', password: Array(61).join('\0'), role: { name: 'ploom' }, country: { name: 'Estonia' } }
@@ -113,7 +133,10 @@ var mysql_params = {
 	password: 'password',
 };
 
-/* NOTE: The user must have SELECT, UPDATE, DELETE, etc rights to the database specified in the next section */
+/*
+ * NOTE: The user must have SELECT, UPDATE, DELETE, etc rights to the
+ * database specified in the next section
+ */
 ```
 
 ## 4. Specify options for the ORM
@@ -121,15 +144,27 @@ var mysql_params = {
 ```node
 var orm_options = {
 	mysql: mysql_params,
-	/* Database name.  User specified in previous section MUST have relevant rights to this database.* */
+	/*
+	 * Database name.  User specified in previous section MUST have
+	 * relevant rights to this database.
+	 */
 	database: 'mysql-orm-test',
-	/* CAUTION: Setting this to true will drop the database then recreate it */
+	/*
+	 * CAUTION: Setting this to true will drop the database then recreate
+	 * it
+	 */
 	recreateDatabase: false,
-	/* CAUTION: Setting this to true will drop the tables mentioned in the schema then recreate them */
+	/*
+	 * CAUTION: Setting this to true will drop the tables mentioned in
+	 * the schema then recreate them
+	 */
 	recreateTables: false,
 	/* Causes an annoying delay between each line output by ORM's logger */
 	debug: process.end.DEBUG
-	/* Log level (1,2,3=FAIL/WARN/INFO).  See logging.js for more info.  2 (WARN) is default */
+	/*
+	 * Log level (1,2,3=FAIL/WARN/INFO).  See logging.js for more info.
+	 * Level 2 (WARN) is default.
+	 */
 	logLevel: 2
 };
 ```
@@ -158,8 +193,12 @@ mysql_orm.create(schema, data, orm_options, function (err, ormObject) {
 ### Reading (loading records from the database)
 
 ```node
-/* loadMany: Read multiple records from a table */
-/* Specify the table by reference in the schema, or as a string e.g. 'countries' */
+/*
+ * loadMany: Read multiple records from a table
+ *
+ * Specify the table by reference in the schema, or as a string
+ * e.g. 'countries'
+ */
 orm.loadMany(orm.schema.countries, null, function (err, countries) {
 	if (err) {
 		throw err;
@@ -167,18 +206,25 @@ orm.loadMany(orm.schema.countries, null, function (err, countries) {
 	countries.forEach(function (country) { console.write(country.name });
 });
 
-/* load: Retrieve one record, return error if none were found or if several were found */
+/*
+ * load: Retrieve one record, return error if none were found or
+ * if several were found
+ */
 orm.load(orm.schema.users, 1, function (err, user) {
 	console.log(user.name + ' is in ' + user.country.name);
 });
-/* Oh did you notice that the `country` is automatically looked up there?  Awesome! */
+/*
+ * Oh did you notice that the `country` is automatically looked
+ * up there?  Awesome!
+ */
 
-/* The second parameter of load / loadMany can also be an object containing search criteria */
+/*
+ * The second parameter of load / loadMany can also be an object
+ * containing search criteria
+ */
 orm.loadMany(orm.schema.users, { country: { name: 'Estonia' } }, callback);
-/* We specified a value in a parent table as the search criteria :D */
+/* We specified a value in a parent table as the search criteria :) */
 ```
-_Automatic lookups only go one level deep at the moment. TODO: Fix this._
-_foreign-keys.js just needs a little tweak to enable recursive lookup._
 
 ### Writing (saving records to the database)
 
@@ -194,9 +240,9 @@ orm.load(orm.schema.users, { name: 'mark' }, function (err, user) {
 });
 
 /*
- * We could also do this instead, if we knew the user's ID.  If the id is not
- * specified, save() will create a new user and set the id field of the passed
- * object to the new id returned from MySQL.
+ * We could also do this instead, if we knew the user's ID.  If the id
+ * is not specified, save() will create a new user and set the id field
+ * of the passed object to the new id returned from MySQL.
  */
 orm.save(orm.schema.users, { id: 1, role: { name: 'pleb' } }, function (err) {
 	if (err) throw err;
@@ -204,8 +250,8 @@ orm.save(orm.schema.users, { id: 1, role: { name: 'pleb' } }, function (err) {
 });
 
 /*
- * When inserting new items with no ID specified, the ID field of the passed
- * object is set to the new row's ID in the database
+ * When inserting new items with no ID specified, the ID field of the
+ * passed object is set to the new row's ID in the database.
  */
 var guestRole = { name: 'guest', rights: 'read_posts,like_posts' };
 orm.save(orm.schema.users, guestRole, function (err) {
@@ -216,7 +262,8 @@ orm.save(orm.schema.users, guestRole, function (err) {
 /*
  * Save multiple records to a table
  * This calls save() internally, so can update or create records.
- * See save.js for details of how to explicity request an UPDATE or an INSERT.
+ * See save.js for details of how to explicity request an UPDATE or
+ * an INSERT.
  */
 orm.saveMany(orm.schema.countries,
 	[
@@ -228,8 +275,8 @@ orm.saveMany(orm.schema.countries,
 	});
 
 /*
- * Save to multiple tables.  This calls saveMany() internally and wraps all the
- * saveMany() calls in one transaction
+ * Save to multiple tables.  This calls saveMany() internally and
+ * wraps all the saveMany() calls in one transaction
  */
 orm.saveMultipleTables(
 	{
@@ -245,10 +292,10 @@ orm.saveMultipleTables(
 
 ```node
 /*
- * There is no deleteMany; delete will remove any and all matching records
- * As with load, a numeric value is interpreted as an ID while an object
- * is interpreted as key-value pairs which will be looked up in parent tables
- * when needed.
+ * There is no deleteMany; delete will remove any and all matching
+ * records.  As with load, a numeric value is interpreted as an ID
+ * while an object is interpreted as key-value pairs which will be
+ * looked up in parent tables when needed.
  */
 orm.delete(orm.schema.users, 1, callback);
 orm.delete(orm.schema.countries, { name: 'Atlantis' }, callback);
@@ -260,8 +307,12 @@ orm.logLevel = 3;
 /* Now STDOUT will get flooded by debugging messages and SQL code */
 
 orm.debug = true;
-/* Now there will be an annoying blocking delay after each logged message */
-/* Don't use this in production! */
+/*
+ * Now there will be an annoying blocking delay after each logged
+ * message
+ *
+ * Don't use this in production!
+ */
 
 You can also set logLevel and debug in the orm_options parameter.
 ```
