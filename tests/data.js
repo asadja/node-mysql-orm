@@ -23,7 +23,7 @@ var read = require('read');
  * obj = { schema, data, orm_options }
  *
  */
-module.exports.initialize = function (callback) {
+module.exports.initialize = function (debug, callback) {
 
 	var schema = {
 
@@ -42,7 +42,6 @@ module.exports.initialize = function (callback) {
 			//password: { type: 'password' },
 			role: { type: 'role' },
 			lastactive: { type: 'timestamp' },
-			admin: { type: 'boolean' },
 			country: { type: 'country' }
 		},
 
@@ -53,7 +52,7 @@ module.exports.initialize = function (callback) {
 
 		posts: {
 			$sort: '-date',
-			user: { type: 'user' },
+			user: { type: 'user', onDelete: 'cascade', onUpdate: 'cascade' },
 			title: { type: 'string', index: true },
 			content: { type: 'text' },
 			date: { type: 'timestamp' },
@@ -71,6 +70,7 @@ module.exports.initialize = function (callback) {
 
 		roles: [
 			{ name: 'admin', rights: '*' },
+			{ name: 'ploom', rights: 'being a ploom' },
 			{ name: 'pleb', rights: 'lol' }
 		],
 
@@ -82,7 +82,8 @@ module.exports.initialize = function (callback) {
 		],
 
 		users: [
-			{ username: 'mark', /*password: Array(61).join('\0'),*/ role: { name: 'admin' }, country: { name: 'Estonia' } }
+			{ username: 'mark', /*password: Array(61).join('\0'),*/ role: { name: 'admin' }, country: { name: 'Estonia' } },
+			{ username: 'marili', /*password: Array(61).join('\0'),*/ role: { name: 'ploom' }, country: { name: 'Estonia' } }
 		],
 
 		posts: [
@@ -109,6 +110,7 @@ module.exports.initialize = function (callback) {
 				database: 'mysql-orm-test',
 				recreateDatabase: true,
 				recreateTables: true,
+				debug: debug
 			};
 			callback(null, {
 				schema: schema,

@@ -23,9 +23,20 @@ module.exports = function (orm ,callback) {
 			orm.loadMany(orm.schema.countries, null, callback);
 		},
 		function (countries, callback) {
-			console.log('Countries');
+			orm.test('Countries');
 			countries.forEach(function (country) {
 				console.log(country.id + ': \t' + country.name);
+			});
+			console.log('');
+			callback(null);
+		},
+		function (callback) {
+			orm.loadMany(orm.schema.users, null, callback);
+		},
+		function (users, callback) {
+			orm.test('Users (country)');
+			users.forEach(function (user) {
+				console.log(user.username + ' (' + user.country.name + ')');
 			});
 			console.log('');
 			callback(null);
@@ -34,9 +45,10 @@ module.exports = function (orm ,callback) {
 			orm.load(orm.schema.users, 1, callback);
 		},
 		function (user, callback) {
-			console.log('Retrieved user #1:');
+			orm.test('Retrieved user #1:');
 			console.log(user);
-			console.log('Setting user role to "pleb"');
+
+			orm.test('Setting user role to "pleb"');
 			user.role = { name: 'pleb' };
 			orm.save(orm.schema.users, user, callback);
 		},
@@ -44,9 +56,13 @@ module.exports = function (orm ,callback) {
 			orm.load(orm.schema.users, 1, callback);
 		},
 		function (user, callback) {
-			console.log('Retrieved user #1:');
+			orm.test('Retrieved user #1:');
 			console.log(user);
-			console.log('Setting user country to "United Kingdom" via raw ID value');
+			if (user.role.name !== 'pleb') {
+				return callback(new Error('User role was not set successfully'));
+			}
+
+			orm.test('Setting user country to "United Kingdom" via raw ID value');
 			user.country = 44;
 			orm.save(orm.schema.users, user, callback);
 		},
@@ -54,17 +70,72 @@ module.exports = function (orm ,callback) {
 			orm.load(orm.schema.users, 1, callback);
 		},
 		function (user, callback) {
-			console.log('Retrieved user #1:');
+			orm.test('Retrieved user #1:');
 			console.log(user);
-			console.log('Replacing country "United Kingdom" with "Scottish Federation"');
+			if (user.country.name !== 'United Kingdom') {
+				return callback(new Error('User country was not set successfully'));
+			}
+
+			orm.test('Replacing country "United Kingdom" with "Scottish Federation"');
 			orm.save(orm.schema.countries, { id:44, name:'Scottish Federation' }, callback);
 		},
 		function (callback) {
 			orm.load(orm.schema.users, 1, callback);
 		},
 		function (user, callback) {
-			console.log('Retrieved user #1:');
+			orm.test('Retrieved user #1:');
 			console.log(user);
+			if (user.country.name !== 'Scottish Federation') {
+				return callback(new Error('Country name was not set successfully'));
+			}
+
+			callback(null);
+		},
+		function (callback) {
+			orm.delete(orm.schema.users, 1, callback);
+		},
+		function (count, callback) {
+			if (count) {
+				orm.test('Deleted user #1');
+				callback(null);
+			}
+			else {
+				callback(new Error('Failed to delete user #1'));
+			}
+		},
+		function (callback) {
+			orm.loadMany(orm.schema.users, null, callback);
+		},
+		function (users, callback) {
+			orm.test('Remaining users:');
+			console.log(users.map(function (user) { return user.name; }).join(', '));
+
+			orm.test('Removing Scottish Federation from countries table');
+			orm.delete(orm.schema.countries, { name: 'Scottish Federation' }, callback);
+		},
+		function (res, callback) {
+			callback(null);
+		},
+		function (callback) {
+			orm.loadMany(orm.schema.countries, null, callback);
+		},
+		function (countries, callback) {
+			orm.test('Countries');
+			countries.forEach(function (country) {
+				console.log(country.id + ': \t' + country.name);
+			});
+			console.log('');
+			callback(null);
+		},
+		function (callback) {
+			orm.loadMany(orm.schema.users, null, callback);
+		},
+		function (users, callback) {
+			orm.test('Users (country)');
+			users.forEach(function (user) {
+				console.log(user.username + ' (' + user.country.name + ')');
+			});
+			console.log('');
 			callback(null);
 		}
 		],

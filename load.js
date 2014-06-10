@@ -85,101 +85,10 @@ var _ = require('underscore');
 var utils = require('./utils');
 var names = utils.names;
 var shift = utils.shift;
+var sql = require('./sql');
 
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
-
-function select(self, table, criteria, callback) {
-	if (_(criteria).has('$fields')) {
-		return callback(null, mysql.format('SELECT ??', [criteria.$fields]));
-	}
-	else {
-		return callback(null, 'SELECT *');
-	}
-}
-
-function from(self, table, criteria, callback) {
-	if (_(table).isString()) {
-		return callback(null, mysql.format('FROM ??', [table]));
-	}
-	else if (_(table).has('$name')) {
-		return callback(null, mysql.format('FROM ??', [table.$name]));
-	}
-	else {
-		return callback(new Error('Unknown table specification: ' + table));
-	}
-}
-
-function where(self, table, criteria, callback) {
-	var self = shift(arguments);
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
-	var cols = names(criteria);
-	if (cols.length) {
-		self.lookupForeignIds(query, table, criteria, function (err, res) {
-			if (err) {
-				return callback(err);
-			}
-			return callback(null,
-				'WHERE\n\t' + cols
-					.map(function (col) {
-						return mysql.format('??=?', [col, res[cols]]);
-					})
-					.join(',\n\t'));
-		}, cols);
-	}
-	else {
-		return callback(null);
-	}
-}
-
-function orderby(self, table, criteria, callback) {
-	var sort = _(criteria).has('$sort') ? criteria.$sort : _(table).has('$sort') ? table.$sort : null;
-	if (sort !== null && sort.length) {
-		if (_(sort).isString()) {
-			sort = [sort];
-		}
-		return callback(null, 'ORDER BY\n\t' + sort.map(function (field) {
-			if (typeof field === 'object') {
-				if (_(field).has('$name') && _(field).has('$table')) {
-					field = field.$name;
-				}
-				else {
-					return callback(new Error('$sort must either be a field name, a field reference, or an array of field names/references'));
-				}
-			}
-			if (field.charAt(0) === '-') {
-				return mysql.escapeId(field.substr(1)) + ' DESC';
-			}
-			else if (field.charAt(0) === '+') {
-				return mysql.escapeId(field.substr(1)) + ' ASC';
-			}
-			else {
-				return mysql.escapeId(orderby);
-			}
-		}).join(',\n\t'));
-	}
-	else {
-		return callback(null);
-	}
-}
-
-function limit(self, table, criteria, callback) {
-	var lparams =
-		_(criteria).has('$first')?1:0 +
-		_(criteria).has('$count')?2:0 +
-		_(criteria).has('$last') ?4:0;
-	switch (lparams) {
-		case 0: return callback(null);
-		case 1: return callback(new Error('$first value for LIMIT specified, but no $last or $count value'));
-		case 2: return callback(null, mysql.format('LIMIT ?', [criteria.$count])); break;
-		case 3: return callback(null, mysql.format('LIMIT ?\nOFFSET ?', [criteria.$count, criteria.$first])); break;
-		case 4:	return callback(new Error('$last value for LIMIT specified, but no $first or $count value'));
-		case 5: return callback(null, mysql.format('LIMIT ?\nOFFSET ?', [criteria.$last - criteria.$first, criteria.$first])); break;
-		case 6: return callback(null, mysql.format('LIMIT ?\nOFFSET ?', [criteria.$count, criteria.$last - criteria.$count])); break;
-		case 7: return callback(new Error('$first, $last, $count were all specified for LIMIT'));
-	}
-}
 
 ORM.prototype.loadMany = function (table, criteria, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
@@ -196,11 +105,11 @@ ORM.prototype.loadMany = function (table, criteria, callback) {
 	}
 	var lookup = !_(criteria).has('$lookup') || criteria.$lookup;
 	async.parallel([
-			async.apply(select, this, table, criteria),
-			async.apply(from, this, table, criteria),
-			async.apply(where, this, query, table, criteria),
-			async.apply(orderby, this, table, criteria),
-			async.apply(limit, this, table, criteria)
+			async.apply(sql.select, this, table, criteria),
+			async.apply(sql.from, this, table, criteria),
+			async.apply(sql.where, this, query, table, criteria),
+			async.apply(sql.orderby, this, table, criteria),
+			async.apply(sql.limit, this, table, criteria)
 			/*
 			 * TODO: JOINs so we can get the foreign key stuff in one operation
 			 * instead of running several SELECTs on every row which is obviously
@@ -211,8 +120,7 @@ ORM.prototype.loadMany = function (table, criteria, callback) {
 			if (err) {
 				return callback(err);
 			}
-			var sql = _(sqlParts).compact().join('\n');
-			query(sql, null, function (err, rows) {
+			query(_(sqlParts).compact().join('\n'), null, function (err, rows) {
 				if (err) {
 					return callback(err);
 				}
@@ -236,17 +144,7 @@ ORM.prototype.loadMany = function (table, criteria, callback) {
 };
 
 ORM.prototype.load = function (table, IdOrCriteria, callback) {
-	var criteria = {};
-	if (_(IdOrCriteria).isNumber() || _(IdOrCriteria).isString()) {
-		criteria.id = IdOrCriteria;
-	}
-	else {
-		for (var prop in IdOrCriteria) {
-			if (_(IdOrCriteria).has(prop)) {
-				criteria[prop] = IdOrCriteria[prop];
-			}
-		}
-	}
+	var criteria = sql.getCriteria(IdOrCriteria);
 	delete criteria.$first;
 	delete criteria.$last;
 	criteria.$limit = 2;

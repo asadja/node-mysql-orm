@@ -12,6 +12,9 @@
 /*
  * Save operations
  *
+ *  NOTE: `REPLACE` will not be supported as it (quite rightly) wrecks foreign
+ *  keys.  if you want to replace, do a `delete` followed by a `save`.
+ *
  *  save(table, row, callback)
  *
  *    Save a single `row` to `table`, updating when the primary key value
@@ -24,6 +27,12 @@
  *    are resolved, see the foreign-keys module for more information.
  *
  *    `callback` is called on completion.
+ *
+ *    `row.$saveMode` is an optional parameter which is cleared by save. It can
+ *    be 'new', 'existing', or 'always' (defaul):
+ *      * new: create new row, fail if `row.id` already exists
+ *      * existing: update existing row, fail if `row.id` is not found
+ *      * always: create new row if possible, update existing row otherwise.
  *
  *    // The following adds a new record as no primary key `id` was specified
  *    save(
@@ -47,7 +56,7 @@
  *      },
  *      function (err) { ... });
  *
-  *  saveMany(table, rows, callback)
+ *  saveMany(table, rows, callback)
  *
  *    Saves a load of `rows` to the `table`, updating when the primary key
  *    value matches an existing row and inserting otherwise.  Foreign key
@@ -59,6 +68,9 @@
  *    see the foreign-keys module for more information.
  *
  *    `callback` is called on completion.
+ *
+ *    Individual rows may have `$saveMode` set, see save() for information
+ *    about this property.  It is deleted after being read.
  *
  *    saveMany(
  *      schema.users,
@@ -73,7 +85,8 @@
  *          id: 2,
  *          name: 'marili',
  *          country: { value: 'Estonia' },
- *          role: { value: 'ploom' }
+ *          role: { value: 'ploom' },
+ *          $saveMode: 'existing'
  *        },
  *      ],
  *      function (err) { .. });
@@ -84,6 +97,9 @@
  *    `data` is an object of the form { tableName: rows, tableName: rows, ... }.
  *    
  *    `callback` is a function (err)
+ *
+ *    `$saveMode` may be specified on individual rows, it is cleared upon save.
+ *    See save() for more information about this property.
  *
  *    Note: tables are procesed in the order that their fields appear in the
  *    `data` object.  This relies on V8 honouring field order, which ECMAScript
@@ -103,7 +119,7 @@
  *          { 
  *            name: 'mark',
  *            country: { name: 'United Kingdom' },
- *            role: { name: 'admin'
+ *            role: { name: 'admin' }
  *          },
  *          {
  *            name: 'marili',
@@ -122,6 +138,7 @@ var _ = require('underscore');
 var utils = require('./utils');
 var names = utils.names;
 var shift = utils.shift;
+var sql = require('./sql');
 
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -136,12 +153,69 @@ ORM.prototype.save = function (table, row, callback) {
 				self.lookupForeignIds(query, table, row, function (err, res) { row = res; callback(err); }, cols);
 			},
 			function (callback) {
-				var updates = ' ON DUPLICATE KEY UPDATE ' + names(row)
-					.filter(function (key) { return key !== 'id'; })
-					.map(function (key) { return mysql.format('??=VALUES(??)', [key, key]); })
-					.join(', ');
-				var sql = 'INSERT INTO ?? SET ?' + updates;
-				query(sql, [table.$name, row], function (err) { callback(err); });
+				var saveMode = row.$saveMode || 'always';
+				delete row.$saveMode;
+				if (saveMode === 'always') {
+					async.parallel([
+							async.apply(sql.insertInto, self, table, null),
+							async.apply(sql.set, self, names(row), row),
+							async.apply(sql.onDuplicateKeyUpdate, self, _(names(row)).without(['id']))
+						],
+						function (err, data) {
+							if (err) {
+								return callback(err);
+							}
+							execQuery(data.join('\n'));
+						});
+				}
+				else if (saveMode === 'new') {
+					async.parallel([
+							async.apply(sql.insertInto, self, table, null),
+							async.apply(sql.set, self, names(row), row),
+						],
+						function (err, data) {
+							if (err) {
+								return callback(err);
+							}
+							execQuery(data.join('\n'));
+						});
+				}
+				else if (saveMode === 'existing') {
+					if (!_(row).has('id')) {
+						return callback(new Error('Cannot save to existing row: no ID specified'));
+					}
+					async.parallel([
+							async.apply(sql.update, self, table, null),
+							async.apply(sql.set, self, _(names(row)).without('id'), row),
+							async.apply(sql.where, self, table, { id: row.id })
+						],
+						function (err, data) {
+							if (err) {
+								return callback(err);
+							}
+							execQuery(data.join('\n'));
+						});
+				}
+				else {
+					return callback(new Error('Unknown save mode: ' + saveMode));
+				}
+				/* Executes the query */
+				function execQuery(sql) {
+					query(sql, null, function (err, res) {
+						if (err) {
+							return callback(err);
+						}
+						if (res.affectedRows === 0) {
+							return callback(new Error('Failed to save row with mode ' + saveMode));
+						}
+						if (_(res).has('insertId') && _(res.insertId).isNumber()) {
+							if (_(table).has('id')) {
+								row.id = res.insertId;
+							}
+						}
+						callback(err);
+					});
+				}
 			}
 		],
 		function (err) { callback(err); });
@@ -163,8 +237,6 @@ ORM.prototype.saveMany = function (table, rows, callback) {
 /* Save sets of rows to several tables, looking up foreign keys where needed */
 ORM.prototype.saveMultipleTables = function (data, callback) {
 	var self = this;
-	console.log(data);
-	console.log(names(data));
 	this.beginTransaction(function (err, transaction) {
 		if (err) {
 			return callback(err);

@@ -63,9 +63,20 @@ module.exports = ORM.prototype;
 /* 0=you_have_deathwish, 1=errors, 2=warnings, 3=info */
 ORM.prototype.logLevel = 3;
 
+function sleep(delay) {
+	/*
+	 * OMG, a blocking operation in node.js, the developer of this package
+	 * must be such a useless n00b right?  Just like those damn kernel
+	 * developers who use `goto`...
+	 */
+	var stop = new Date().getTime() + delay;
+	while (new Date().getTime() < stop) ;
+}
+
 /* Logging with pretty colours */
 ORM.prototype.log = function (level, msg) {
 	console.log(cli.green('mysql-orm') + ' ' + level + ' ' + msg);
+	if (this.debug) sleep(50);
 	return msg;
 }
 
@@ -75,6 +86,7 @@ ORM.prototype.error = function (msg) {
 		this.log(cli.red.bold('FAIL'), msg);
 		throw (msg instanceof Error ? msg : new Error(msg));
 	}
+	if (this.debug) sleep(500);
 	return msg;
 }
 
@@ -83,6 +95,7 @@ ORM.prototype.warn = function (msg) {
 	if (this.logLevel >= 2) {
 		this.log(cli.yellow('WARN'), msg);
 	}
+	if (this.debug) sleep(250);
 	return msg;
 }
 
@@ -91,5 +104,11 @@ ORM.prototype.info = function (msg) {
 	if (this.logLevel >= 3) {
 		this.log(cli.cyan('INFO'), msg);
 	}
+	return msg;
+}
+
+/* Testing */
+ORM.prototype.test = function (msg) {
+	this.log(cli.magenta('TEST'), msg);
 	return msg;
 }

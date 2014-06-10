@@ -27,16 +27,20 @@ var test = {
 
 var orm = null, currentTest = 'Initialize configuration';
 
+var debug = false;
+
 async.waterfall([
-	test.data.initialize,
+	async.apply(test.data.initialize, debug),
 	function createORM(config, callback) {
 		currentTest = 'Create ORM object and initialize test database';
 		mysql_orm.create(config.schema, config.data, config.orm_options, callback);
 	},
 	function (orm_, callback) {
 		orm = orm_;
-		orm.info('Setting logLevel to 2, info will not be reported from now on');
-		orm.logLevel = 2;
+		if (!orm.debug) {
+			orm.info('Setting logLevel to 2, info will not be reported from now on');
+			orm.logLevel = 2;
+		}
 		callback(null);
 	},
 	function (callback) {

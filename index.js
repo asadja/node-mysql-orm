@@ -16,6 +16,7 @@ module.exports.create = function (schema, defaultdata, options, onready) {
 	return new ORM(schema, defaultdata, options, onready);
 };
 
+
 /* ORM constructor */
 /*
  * options:
@@ -27,6 +28,7 @@ module.exports.create = function (schema, defaultdata, options, onready) {
  */
 function ORM(schema, defaultdata, options, onready) {
 	var self = this;
+	this.debug = options.debug;
 	if (!schema || !options || !onready) {
 		throw new Error('Required parameter missing');
 	}
@@ -86,3 +88,4 @@ _(ORM.prototype).extend(require('./transaction'));
 _(ORM.prototype).extend(require('./foreign-keys'));
 _(ORM.prototype).extend(require('./save'));
 _(ORM.prototype).extend(require('./load'));
+_(ORM.prototype).extend(require('./delete'));

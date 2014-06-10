@@ -65,6 +65,10 @@ function initialise_schema(orm) {
 				field.unique = _(f).contains('unique');
 				field.index = _(f).contains('index');
 				field.nullable = _(f).contains('nullable');
+				if (_(f).contains('cascade')) {
+					field.onDelete = 'cascade';
+					field.onUpdate = 'cascade';
+				}
 			}
 			field.$schema = orm.schema;
 			field.$table = table;
