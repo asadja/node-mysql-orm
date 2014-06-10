@@ -1,9 +1,15 @@
-node-mysql-orm
+mysql-orm [![Build Status](https://travis-ci.org/battlesnake/node-mysql-orm.svg?branch=master)](https://travis-ci.org/felixge/node-mysql-orm) [![NPM version](https://badge.fury.io/js/mysql-orm.svg)](http://badge.fury.io/js/mysql-orm)
 ==============
 
 For node.js: MySQL wrapper providing object mapping, automatic table generation via JSON schema, automatic foreign key generation and resolution, indexes, default values, reference options and more.
 
 A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.
+
+# Install
+
+```sh
+$ npm install mysql-orm
+```
 
 # Simple example:
 
@@ -74,7 +80,8 @@ var schema = {
 ## 2. Define the initial dataset (optional)
 
 ```node
-/* Define the initial contents of the database (optional)
+/* 
+ * Define the initial contents of the database (optional)
  *
  * V8 preserves field order - which is useful since some tables depend on
  * content in others
@@ -128,7 +135,7 @@ var data = {
 var mysql_params = {
 	host: 'localhost',
 	user: 'username',
-	password: 'password',
+	password: 'password'
 };
 
 /*
@@ -158,7 +165,7 @@ var orm_options = {
 	 */
 	recreateTables: false,
 	/* Causes an annoying delay between each line output by ORM's logger */
-	debug: process.end.DEBUG
+	debug: process.env.DEBUG,
 	/*
 	 * Log level (1,2,3=FAIL/WARN/INFO).  See logging.js for more info.
 	 * Level 2 (WARN) is default.
@@ -175,7 +182,7 @@ Note that this will not occur if the tables/database are created but the `recrea
 CAUTION: `recreateTables` / `recreateDatabase` are for development purposes only, they WILL cause orm to drop the database and tables if they already exist.
 
 ```node
-var mysql_orm = require('../');
+var mysql_orm = require('mysql_orm');
 var orm = null;
 
 mysql_orm.create(schema, data, orm_options, function (err, ormObject) {
