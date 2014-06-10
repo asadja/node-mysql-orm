@@ -1,0 +1,6 @@
+Improve performance a little (see TODO notes in code).  Performance is low priority.
+
+Multi-level lookups (all work to do will be in foreign-keys.js)
+
+Define table-dependent prototypes for returned rows, so schema can define methods for them such as "fullName", "toString", "toHTML", etc.
+In turn, base these on a prototype which supports "save", "delete", "lookupIds", "lookupValues", ...
