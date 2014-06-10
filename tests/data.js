@@ -92,30 +92,37 @@ module.exports.initialize = function (debug, callback) {
 
 	};
 
-	async.series({
-			username: async.apply(read, {prompt:'Database username: '}),
-			password: async.apply(read, {prompt:'Database password: ',silent:true,replace:'\u263A'})
-		},
-		function (err, params) {
-			if (err) {
-				return callback(err);
-			}
-			var mysql_params = {
-				host: 'localhost',
-				user: params.username[0],
-				password: params.password[0],
-			};
-			var orm_options = {
-				mysql: mysql_params,
-				database: 'mysql-orm-test',
-				recreateDatabase: true,
-				recreateTables: true,
-				debug: debug
-			};
-			callback(null, {
-				schema: schema,
-				data: data,
-				orm_options: orm_options
-			});
+	if (process.argv.length > 2) {
+		configure(null, { username: [process.argv[2]], password: [process.argv[3]], database: [process.argv[4]] });
+	}
+	else {
+		async.series({
+				username: async.apply(read, {prompt:'Database username: '}),
+				password: async.apply(read, {prompt:'Database password: ',silent:true,replace:'\u263A'})
+			},
+			configure);
+	}
+
+	function configure(err, params) {
+		if (err) {
+			return callback(err);
+		}
+		var mysql_params = {
+			host: 'localhost',
+			user: params.username[0],
+			password: params.password[0],
+		};
+		var orm_options = {
+			mysql: mysql_params,
+			database: params.database || 'mysql-orm-test',
+			recreateDatabase: true,
+			recreateTables: true,
+			debug: debug
+		};
+		callback(null, {
+			schema: schema,
+			data: data,
+			orm_options: orm_options
 		});
+	}
 };
