@@ -22,7 +22,7 @@
  *      3: info is also logged.
  *      4: for those who use CFLAGS="-O99" because "-O98" code is just too slow.
  *
- *    logLevel = 3 (default)
+ *    logLevel = 2 (default)
  *   
  *
  *  log(level, msg)
@@ -61,7 +61,7 @@ var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
 /* 0=you_have_deathwish, 1=errors, 2=warnings, 3=info */
-ORM.prototype.logLevel = 3;
+ORM.prototype.logLevel = 2;
 
 function sleep(delay) {
 	/*
