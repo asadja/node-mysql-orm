@@ -42,6 +42,17 @@ module.exports = function (orm ,callback) {
 			callback(null);
 		},
 		function (callback) {
+			orm.loadMany(orm.schema.users, { country: { name: 'Estonia' } }, callback);
+		},
+		function (users, callback) {
+			orm.test('Users in Estonia');
+			users.forEach(function (user) {
+				console.log(user.username);
+			});
+			console.log('');
+			callback(null);
+		},
+		function (callback) {
 			orm.load(orm.schema.users, 1, callback);
 		},
 		function (user, callback) {
