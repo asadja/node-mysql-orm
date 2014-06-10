@@ -1,4 +1,4 @@
-mysql-orm [![Build Status](https://travis-ci.org/battlesnake/node-mysql-orm.svg?branch=master)](https://travis-ci.org/felixge/node-mysql-orm) [![NPM version](https://badge.fury.io/js/mysql-orm.svg)](http://badge.fury.io/js/mysql-orm)
+mysql-orm [![Build Status](https://travis-ci.org/battlesnake/node-mysql-orm.svg?branch=master)](https://travis-ci.org/battlesnake/node-mysql-orm) [![NPM version](https://badge.fury.io/js/mysql-orm.svg)](http://badge.fury.io/js/mysql-orm)
 ==============
 
 For node.js: MySQL wrapper providing object mapping, automatic table generation via JSON schema, automatic foreign key generation and resolution, indexes, default values, reference options and more.
