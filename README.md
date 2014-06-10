@@ -128,7 +128,9 @@ var orm_options = {
 	/* CAUTION: Setting this to true will drop the tables mentioned in the schema then recreate them */
 	recreateTables: false,
 	/* Causes an annoying delay between each line output by ORM's logger */
-	debug: debug
+	debug: process.end.DEBUG
+	/* Log level (1,2,3=FAIL/WARN/INFO).  See logging.js for more info.  2 (WARN) is default */
+	logLevel: 2
 };
 ```
 
@@ -257,5 +259,9 @@ orm.delete(orm.schema.countries, { name: 'Atlantis' }, callback);
 orm.logLevel = 3;
 /* Now STDOUT will get flooded by debugging messages and SQL code */
 
-You can also set logLevel in the orm_options parameter.
+orm.debug = true;
+/* Now there will be an annoying blocking delay after each logged message */
+/* Don't use this in production! */
+
+You can also set logLevel and debug in the orm_options parameter.
 ```
