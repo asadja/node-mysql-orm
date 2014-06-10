@@ -2,4 +2,4 @@
  node_js:
    - "0.10"
  before_script:
-   - mysql -u root -p'' -e 'create database testdb31415926; grant all on *.* to testuser@localhost identified by "testpwd";'
+   - mysql -u root  -e 'create database testdb31415926; grant all on *.* to testuser@localhost identified by "testpwd";'
