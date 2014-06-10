@@ -267,6 +267,7 @@ You can also set logLevel and debug in the orm_options parameter.
 ```
 
 # Coding standards
+(for contributors only!  I'm not going all Python at you guys, users!)
 
  * Single tab for indent.  This way I can have a 4 column indent, while you can enjoy your preferred indent size simply by setting an appropriate tabstop.  Strictly no spaces for indentation of code.
 
