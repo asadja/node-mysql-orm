@@ -265,3 +265,67 @@ orm.debug = true;
 
 You can also set logLevel and debug in the orm_options parameter.
 ```
+
+# Coding standards
+
+ * Single tab for indent.  This way I can have a 4 column indent, while you can enjoy your preferred indent size simply by setting an appropriate tabstop.  Strictly no spaces for indentation of code.
+
+ * require's all have their own var.  This is non-negotiable.  This way there is no disagreement over where commas go as their aren't any, and editing require's is easier.
+
+ * External require's come before internal ones, with a blank line before, after, and between the two blocks.
+
+   ```node
+
+   var mysql = require('mysql');
+   var async = require('async');
+   var _ = require('underscore');
+
+   var myUtil = require('./myUtil/');
+			
+   ```
+
+ * No strict rule for indentation of anonymous functions, objects or arrays.  Make it readable and don't waste too many columns.
+
+ * Open brace for control block (`if`/`do`/`while`/`function`/`else`) is ALWAYS on same line as block command.  Close brace never shares its line with code unless the entire block is a `{ one-liner }`.  This includes the brace before `else`, `else` has its own line (although I'm not too bothered by this, as I prefer `} else {` for C/C++ code).
+
+   ```node
+   function myFunc(a, b, c) {
+   		if (a) {
+   			while (b(c--)) { console.log(c); }
+   		}
+   		else {
+   			async_thing(param, function (err, res) {
+   				/*
+   				 * Indent anonymous functions in any way that is readable and
+   				 * doesn't waste a tonne of columnage.
+   				 */
+   			});
+   			/* The above close-brace shares a line with bracket, semicolon but never with code.
+   		}
+   		/* Objects and arrays... just make it readable and not too wasteful */
+   		a = [1, 2, 3,
+   				{
+   					name: 'four'
+   				}];
+   		b = [
+   			'What is your favourite colour',
+   			'What is the velocity of an unladen swallow',
+   			'Aaaaaaaaiiiiiiiii'
+   		];
+   }
+   ```
+
+ * Comment are padded by a space.  Multiline comments are padded by a blank comment line.  `//` comments are only used for removing bits of code, never for actual comments.
+
+   ```node
+   	/* Single-line comment with a space padding on each side */
+
+   	/*
+	 * Multi-line comment with space padding on left
+	 * and blank line padding above and below.
+	 */
+			 
+   	//console.log('Only use // for commenting out code.  Padding is not important in this case.');
+   ```
+		
+   I prefer the Oxford comma for technical writing, but I'm not too bothered about whether you use it or not.
