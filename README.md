@@ -348,11 +348,14 @@ You can also set logLevel and debug in the orm_options parameter.
    		else {
    			async_thing(param, function (err, res) {
    				/*
-   				 * Indent anonymous functions in any way that is readable and
-   				 * doesn't waste a tonne of columnage.
+   				 * Indent anonymous functions in any way that is readable
+   				 * and doesn't waste a tonne of columnage.
    				 */
    			});
-   			/* The above close-brace shares a line with bracket, semicolon but never with code.
+   			/*
+   			 * The above close-brace shares a line with bracket, semicolon but
+   			 * never with code.
+   			 */
    		}
    		/* Objects and arrays... just make it readable and not too wasteful */
    		a = [1, 2, 3,
