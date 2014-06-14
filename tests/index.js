@@ -9,9 +9,11 @@
  *
  */
 
-/*
- * Tests / example usage
- */
+//
+// tests
+// =====
+// Tests / example usage
+//
 
 
 var mysql = require('mysql');
@@ -27,12 +29,16 @@ var test = {
 
 var orm = null, currentTest = 'Initialize configuration';
 
-var debug = false;
+var debug = process.env.DEBUG || process.env.DEBUG_MYSQL_ORM;
 
 async.waterfall([
 	async.apply(test.data.initialize, debug),
 	function createORM(config, callback) {
 		currentTest = 'Create ORM object and initialize test database';
+		if (debug) {
+			config.orm_options.logLevel = 3;
+			config.orm_options.debug = true;
+		}
 		mysql_orm.create(config.schema, config.data, config.orm_options, callback);
 	},
 	function (orm_, callback) {

@@ -16,22 +16,27 @@ var cli = require('cli-color');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/*
- * logLevel: int
- * --------
- *
- * Sets the logging level.
- *  + 0: all messages are ignored including fatal errors.  Do not use this
- *    level.
- *  + 1: only fatal errors are logged (and are also thrown).
- *  + 2: warnings are also logged.
- *  + 3: info is also logged.
- *  + 4: for those who use CFLAGS="-O99" because "-O98" code is just too slow.
- *
- * ### Default
- *
- *     logLevel = 2
- */
+// logging
+// =======
+// Colourful logging for mysql-orm
+//
+
+// 
+// logLevel: int
+// --------
+// 
+// Sets the logging level.
+//  + 0: all messages are ignored including fatal errors.  Do not use this
+//    level.
+//  + 1: only fatal errors are logged (and are also thrown).
+//  + 2: warnings are also logged.
+//  + 3: info is also logged.
+//  + 4: for those who use CFLAGS="-O99" because "-O98" code is just too slow.
+// 
+// ### Default
+// 
+//     logLevel = 2
+// 
 ORM.prototype.logLevel = 2;
 
 /* Used in DEBUG mode only, quit whining already */
@@ -45,37 +50,37 @@ function sleep(delay) {
 	while (new Date().getTime() < stop) ;
 }
 
-/*
- * log(level, msg)
- * ---
- *
- * Logging with pretty colours
- *
- * Logs a message at a custom level
- *
- * ### Example
- *
- *     log(cli.olive('POTATO'), 'I am a potato');
- */
+// 
+// log(level, msg)
+// ---
+// 
+// Logging with pretty colours
+// 
+// Logs a message at a custom level
+// 
+// ### Example
+// 
+//     log(cli.olive('POTATO'), 'I am a potato');
+// 
 ORM.prototype.log = function (level, msg) {
 	console.log(cli.green('mysql-orm') + ' ' + level + ' ' + msg);
 	if (this.debug) sleep(50);
 	return msg;
 }
 
-/*
- * error(msg)
- * -----
- *
- * **Throws an exception**
- *
- * Logs the given message at FAIL level, then throws it as an Error, if
- * logLevel >= 1.  If logLevel !>= 1, stuff will go horribly wrong.
- *
- * ### Example
- *
- *     error('Access denied to backend database');
- */
+// 
+// error(msg)
+// -----
+// 
+// **Throws an exception**
+// 
+// Logs the given message at FAIL level, then throws it as an Error, if
+// logLevel >= 1.  If logLevel !>= 1, stuff will go horribly wrong.
+// 
+// ### Example
+// 
+//     error('Access denied to backend database');
+// 
 ORM.prototype.error = function (msg) {
 	if (this.logLevel >= 1) {
 		this.log(cli.red.bold('FAIL'), msg);
@@ -85,16 +90,16 @@ ORM.prototype.error = function (msg) {
 	return msg;
 }
 
-/*
- * warn(msg)
- * ----
- *
- * Logs the given message at WARN level.
- *
- * ### Example
- *
- *     warn('dropTables specified, dropping all tables');
- */
+// 
+// warn(msg)
+// ----
+// 
+// Logs the given message at WARN level.
+// 
+// ### Example
+// 
+//     warn('dropTables specified, dropping all tables');
+// 
 ORM.prototype.warn = function (msg) {
 	if (this.logLevel >= 2) {
 		this.log(cli.yellow('WARN'), msg);
@@ -103,16 +108,16 @@ ORM.prototype.warn = function (msg) {
 	return msg;
 }
 
-/*
- * info(msg)
- * ----
- *
- * Logs the given message at INFO level.
- *
- * ### Example
- *
- *     info('Executing query ' + sql);
- */
+// 
+// info(msg)
+// ----
+// 
+// Logs the given message at INFO level.
+// 
+// ### Example
+// 
+//     info('Executing query ' + sql);
+// 
 ORM.prototype.info = function (msg) {
 	if (this.logLevel >= 3) {
 		this.log(cli.cyan('INFO'), msg);
@@ -120,7 +125,16 @@ ORM.prototype.info = function (msg) {
 	return msg;
 }
 
-/* Testing */
+// 
+// test(msg)
+// ----
+// 
+// Logs the given message at TEST level.
+// 
+// ### Example
+// 
+//     test('Running test #32');
+// 
 ORM.prototype.test = function (msg) {
 	this.log(cli.magenta('TEST'), msg);
 	return msg;

@@ -16,7 +16,16 @@ var mysql = require('mysql');
 var async = require('async');
 var _ = require('underscore');
 
-/* Like Array.prototype.shift, but operates on arguments too */
+// util
+// ====
+// Internally-used utilities
+
+// shift
+// =====
+// **Normal use will break in ES6, as `arguments` becomes immutable in ES6**
+//
+// Like Array.prototype.shift, but operates on arguments too
+
 module.exports.shift = function (args) {
 	var shifted = args[0];
 	for (var i = 0; i < args.length; i++) {
@@ -26,12 +35,19 @@ module.exports.shift = function (args) {
 	return shifted;
 }
 
-/* Indents a multiline string */
+// indent
+// ======
+// Indents a multiline string
+//
 module.exports.indent = function (str) {
 	return '\t' + str.replace(/\n/g, '\n\t');
 };
 
-/* Get a list of object names within the given object */
+// names
+// =====
+// Get a list of object names within the given object.  Returns all field names
+// that don't begin with `$`.
+//
 module.exports.names = function (obj) {
 	return _(obj).keys().filter(
 		function (key) {

@@ -11,16 +11,6 @@
  *
  */
 
-/*
- * Foreign key support
- * -------------------
- *
- *  The options query parameter is a function (format, params, callback),
- *  such as the mysql connection.query method.  This allows intercepting of
- *  queries (e.g. for logging) and transactional operations even when the ORM
- *  is using a connection pool.
- */
-
 var mysql = require('mysql');
 var _ = require('underscore');
 var async = require('async');
@@ -32,17 +22,27 @@ var shift = utils.shift;
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/*
- * listForeignKeys(table)
- * ---------------
- *
- * Returns an array of names of fields in the table which have a foreign key
- * constraint.
- *
- * ### Example
- *
- *     var names = listForeignKeys(schema.users);
- */
+// foreign-keys
+// ============
+// Foreign key support
+// 
+// The options query parameter is a function (format, params, callback),
+// such as the mysql connection.query method.  This allows intercepting of
+// queries (e.g. for logging) and transactional operations even when the ORM
+// is using a connection pool.
+//
+
+// 
+// listForeignKeys(table)
+// ---------------
+// 
+// Returns an array of names of fields in the table which have a foreign key
+// constraint.
+// 
+// ### Example
+// 
+//     var names = listForeignKeys(schema.users);
+// 
 ORM.prototype.listForeignKeys = function (table) {
 	if (_(table).isString()) {
 		table = this.schema[table];
@@ -50,19 +50,19 @@ ORM.prototype.listForeignKeys = function (table) {
 	return names(table).filter(function (col) { return !!table[col].references; });
 };
 
-/*
- * lookupForeignId([query], field, criteria, callback)
- * ---------------
- *
- * Looks up the id of the parent record, identified by search criteria. Returns
- * an error if no or if multiple parent records are found.  In such a case, the
- * second callback paremeter is zero or two for no or multiple records found.
- *
- * ### Example
- *
- *     lookupForeignKey(schema.users.country, { name: 'Estonia' },
- *       function (err, value) { ... });
- */
+// 
+// lookupForeignId([query], field, criteria, callback)
+// ---------------
+// 
+// Looks up the id of the parent record, identified by search criteria. Returns
+// an error if no or if multiple parent records are found.  In such a case, the
+// second callback paremeter is zero or two for no or multiple records found.
+// 
+// ### Example
+// 
+//     lookupForeignKey(schema.users.country, { name: 'Estonia' },
+//       function (err, value) { ... });
+// 
 ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	field = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
@@ -95,29 +95,29 @@ ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 		});
 };
 
-/*
- *  lookupForeignIds([query], table, row, callback)
- *  ----------------
- *
- * Looks up all foreign key values for a row
- *
- * Any foreign-key fields in row which contain an object are assumed to be
- * search criteria.  lookupForeignId is used to fill in their corresponding id
- * values.  Those values of row are replaced with the id values, then the same
- * (modified) row object is passed to the callback.
- *
- * ### Example
- *
- *     lookupForeignIds(schema.users,
- *       {
- *         name: 'mark',
- *         country: { name: 'Estonia' },
- *         role: { name: 'admin' }
- *       },
- *       function (err, value) { ... });
- *
- *     // value.country = 372, value.role = <some id value>
- */
+// 
+//  lookupForeignIds([query], table, row, callback)
+//  ----------------
+// 
+// Looks up all foreign key values for a row
+// 
+// Any foreign-key fields in row which contain an object are assumed to be
+// search criteria.  lookupForeignId is used to fill in their corresponding id
+// values.  Those values of row are replaced with the id values, then the same
+// (modified) row object is passed to the callback.
+// 
+// ### Example
+// 
+//     lookupForeignIds(schema.users,
+//       {
+//         name: 'mark',
+//         country: { name: 'Estonia' },
+//         role: { name: 'admin' }
+//       },
+//       function (err, value) { ... });
+// 
+//     // value.country = 372, value.role = <some id value>
+// 
 ORM.prototype.lookupForeignIds = function (table, row, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
@@ -143,6 +143,10 @@ ORM.prototype.lookupForeignIds = function (table, row, callback) {
 		});
 };
 
+// lookupForeignRow
+// ----------------
+// **TODO: Document**
+//
 ORM.prototype.lookupForeignRow = function (field, id, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	field = shift(arguments), id = shift(arguments), callback = shift(arguments);

@@ -11,10 +11,11 @@
  *
  */
 
-/*
- * Test / example usage, see the modles in the ./tests folder.
- *
- * Is run my travis-cl, see the travis file and package.json. 
- */
+// test
+// ====
+// Test / example usage, see the modles in the ./tests folder.
+// 
+// Is run my travis-cl, see the travis file and package.json. 
+// 
 
 require('./tests/');

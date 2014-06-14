@@ -375,7 +375,7 @@ You can also set logLevel and debug in the orm_options parameter.
    }
    ```
 
- * Comment are padded by a space.  Multiline comments are padded by a blank comment line.  `//` comments are only used for removing bits of code, never for actual comments.
+ * Comment are padded by a space.  Multiline comments are padded by a blank comment line.  `//` comments are only used for lit.js documentation and for removing bits of code, never for actual comments.
 
    ```node
    	/* Single-line comment with a space padding on each side */
@@ -386,6 +386,10 @@ You can also set logLevel and debug in the orm_options parameter.
 	 */
 			 
    	//console.log('Only use // for commenting out code.  Padding is not important in this case.');
+
+	//
+	// # lit.js documenation
+	//
    ```
 		
    I prefer the Oxford comma for technical writing, but I'm not too bothered about whether you use it or not.

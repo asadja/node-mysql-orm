@@ -21,23 +21,28 @@ var indent = utils.indent;
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/*
- * loggedQuery(connection)
- * -----------
- *
- * Query logging
- *
- * Creates a wrapper around a pool/connection query function
- *
- * query is function with same signatures as mysql's connection.query
- *
- * Each call to loggedQuery generated a logging function with a different cid
- * value.  Each call to the returned query function increases the qid value
- * associated with that cid.
- *
- * ### Example
- *     query = loggedQuery(connection)
- */
+// logging-query
+// =============
+// Makes query diagnostics really easy
+//
+
+// 
+// loggedQuery(connection)
+// -----------
+// 
+// Query logging
+// 
+// Creates a wrapper around a pool/connection query function
+// 
+// query is function with same signatures as mysql's connection.query
+// 
+// Each call to loggedQuery generated a logging function with a different cid
+// value.  Each call to the returned query function increases the qid value
+// associated with that cid.
+// 
+// ### Example
+//     query = loggedQuery(connection)
+// 
 var cid_static = 0;
 ORM.prototype.loggedQuery = function (connection) {
 	var qid_static = 0;

@@ -17,22 +17,21 @@ var cli = require('cli-color');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/*
- * beginTransaction(callback)
- * ----------------
- *
- * Acquires a connection [from the pool if pooled] and begins a transaction
- *
- * The connection is released back to the pool after rollback or after a
- * successful commit [if pooled].
- *
- * callback = function (err, { connection, query, commit, rollback })
- *
- *  + connection: database connection
- *  + query: connection.query (tapped for logging)
- *  + commit: function (callback(err))
- *  + rollback function (callback(err))
- */
+// beginTransaction(callback)
+// ----------------
+// 
+// Acquires a connection [from the pool if pooled] and begins a transaction
+// 
+// The connection is released back to the pool after rollback or after a
+// successful commit [if pooled].
+// 
+// callback = function (err, { connection, query, commit, rollback })
+// 
+//  + connection: database connection
+//  + query: connection.query (tapped for logging)
+//  + commit: function (callback(err))
+//  + rollback function (callback(err))
+// 
 ORM.prototype.beginTransaction = function (callback) {
 	var self = this;
 	var pooled = this.connection.getConnection;

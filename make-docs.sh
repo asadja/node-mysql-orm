@@ -6,10 +6,13 @@ then
 	exit 1
 fi
 
-rm docs/*.html
+[ -d docs ] && rm -r -- docs/
+mkdir docs
 
 for JS in *.js
 do
 	DOC=${JS%.*}
-	litjs $JS -o docs/$DOC.html -s callouts --title 'mysql-orm: '$JS 
+	litjs <(sed -e 's/\t/  /g' < $JS) -o docs/$DOC.html -s callouts --title 'mysql-orm: '$JS 
 done
+
+cp -R /usr/local/lib/node_modules/lit/css docs/
