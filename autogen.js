@@ -2,31 +2,13 @@
 
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
  *
- */
-
-/*
- * Automtaic database / table generation
- *
- * Schema: { $types: definitions, table: definition, table: definition, ... }
- *
- * Table: { [ $primary: array/string, ] field: definition, field: definition, ... }
- * TODO: custom primary fields
- *
- * Field:
- *  String notation: 'type[,index][,unique][,nullable]'
- *  Object notation: { type: 'varchar(10)', index: true, unique: false, nullable: false ... }
- *
- * Internal types:
- *  ::id INTEGER PRIMARY KEY AUTO_INCREMENT
- *
- * Type definition examples:
- *
- *  $types: { 'username': 'varchar(32)', 'password': 'char(61)', 'user': ':users' }
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -38,7 +20,7 @@ var utils = require('./utils');
 var names = utils.names;
 var indent = utils.indent;
 
-/* Set up backreferences in the schema */
+/* Parse the schema and set up backreferences in the schema */
 module.exports.initialise_schema = initialise_schema;
 function initialise_schema(orm) {
 	function keys(obj) {
@@ -51,7 +33,7 @@ function initialise_schema(orm) {
 		var table = orm.schema[tableName];
 		table.$schema = orm.schema;
 		table.$name = tableName;
-		/* All tables must have an ID primary key */
+		/* All tables must have a primary key */
 		if (!_(table).has('id') && !table.$primary) {
 			table.id = { type: '::id' };
 		}
@@ -59,7 +41,7 @@ function initialise_schema(orm) {
 			orm.info('schema ' + Array(tableName.length+1).join(' ') + '.' + fieldName);
 			var field = table[fieldName];
 			if (_(field).isString()) {
-				var f = field.split(',');
+				var f = field.split(',').map(function (s) { return s.trim(); });
 				field = {};
 				field.type = f.shift();
 				field.unique = _(f).contains('unique');
@@ -69,6 +51,20 @@ function initialise_schema(orm) {
 					field.onDelete = 'cascade';
 					field.onUpdate = 'cascade';
 				}
+			}
+			/* Resolve aliases */
+			if (_(orm.schema.$types).has(field.type)) {
+				field.type = orm.schema.$types[field.type];
+			}
+			/* Builtin primary key type */
+			if (field.type === '::id') {
+				field.type = 'INTEGER AUTO_INCREMENT';
+				if (table.$primary) {
+					throw new Error(
+						'Cannot parse ::id key "' + fieldName + '": table "' +
+						tableName + '" already has primary key(s) specified');
+				}
+				table.$primary = fieldName;
 			}
 			field.$schema = orm.schema;
 			field.$table = table;
@@ -124,13 +120,16 @@ function create_tables(orm, recreate, callback) {
 
 /* Generates a CREATE TABLE query for the given table schema */
 function create_table(orm, table) {
-	var column_definitions = [];
+	var columns = [];
 	names(table).forEach(function (fieldName) {
-		column_definitions.push(column_definition(orm, table[fieldName]));
+		columns.push(column_definition(orm, table[fieldName]));
 	});
+	if (table.$primary && table.$primary.length) {
+		columns.push(mysql.format('PRIMARY KEY (??)', [table.$primary]));
+	}
 	var lines = [];
 	lines.push(mysql.format('CREATE TABLE IF NOT EXISTS ?? (', table.$name));
-	lines.push(indent(column_definitions.join(',\n')));
+	lines.push(indent(columns.join(',\n')));
 	lines.push(');');
 	return lines.join('\n');
 }
@@ -146,29 +145,26 @@ function reference_option(orm, value) {
 
 /* Generates column_definition clauses for CREATE_TABLE */
 function column_definition(orm, field) {
-	var name = field.$name, type = field.type, nullable = field.nullable, index = field.index, unique = field.unique, defaultValue = field.defaultValue, primary = false, references = field.references, onUpdate = field.onUpdate, onDelete = field.onDelete, lines = [], fieldFullName = mysql.escapeId(field.$table.$name) + '.' + mysql.escapeId(field.$name);
-	while (_(orm.types).has(type)) {
-		type = orm.types[type];
-	}
-	/* Primary key */
-	if (type === '::id') {
-		type = 'INTEGER';
-		primary = true;
-	}
+	var name = field.$name, type = field.type, nullable = field.nullable, index = field.index, unique = field.unique, defaultValue = field.default, references = field.references, onUpdate = field.onUpdate, onDelete = field.onDelete, lines = [], fieldFullName = mysql.escapeId(field.$table.$name) + '.' + mysql.escapeId(field.$name);
 	/* Automatic foreign key */
-	else if (type.charAt(0) === ':') {
-		var ref = type.substr(1);
+	if (type.charAt(0) === ':') {
+		var refs = type.split(':');
+		refs.shift();
+		var ref = refs.shift(), key = refs.shift() || 'id';
 		type = 'INTEGER';
 		if (!_(orm.schema).has(ref)) {
 			return orm.error('Cannot create foreign key: table ' + mysql.escapeId(ref) + ' not found for field ' + fieldFullName);
 		}
+		if (!_(orm.schema[ref]).has(key)) {
+			return orm.error('Cannot create foreign key: field ' + mysql.escapeId(ref) + '.' + mysql.escapeId(key) + ' not found for field ' + fieldFullName);
+		}
 		if (!_(index).isString()) {
-			index = name + '_idx_' + ref;
+			index = name + '_idx_' + ref + '_' + key;
 		}
 		if (!_(references).isUndefined()) {
 			return orm.error('Cannot define foreign key: a foreign key is already specified for field ' + fieldFullName);
 		}
-		references = orm.schema[ref].id;
+		references = orm.schema[ref][key];
 	}
 	/* Index */
 	if (index) {
@@ -197,7 +193,7 @@ function column_definition(orm, field) {
 			_(onUpdate).isString() && 'ON UPDATE ' + reference_option(orm, onUpdate),
 			_(onDelete).isString() && 'ON DELETE ' + reference_option(orm, onDelete),
 		]).compact().join(' '),
-		[name + '_fk_' + references.$table.$name, name, references.$table.$name, references.$name]]);
+		[name + '_fk_' + references.$table.$name + '_' + references.$name, name, references.$table.$name, references.$name]]);
 	}
 	/* Column name and definition */
 	lines = lines.map(function (ar) { return mysql.format.apply(mysql, ar); }).map(indent);
@@ -205,7 +201,6 @@ function column_definition(orm, field) {
 		mysql.escapeId(name),
 		type,
 		!nullable && 'NOT NULL',
-		primary && 'PRIMARY KEY AUTO_INCREMENT',
 		defaultValue && ('DEFAULT ' + mysql.escape(defaultValue))
 	]).compact().join(' '));
 	return lines.join(',\n');

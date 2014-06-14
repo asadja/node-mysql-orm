@@ -1,24 +1,14 @@
 'use strict';
-
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
  *
- */
-
-/*
- * Query logging
+ * Released under GNU General Public License, Version 2
  *
- *  query = loggedQuery(connection)
- *
- *    `query` is function with same signatures as mysql's connection.query
- *
- *    Each call to loggedQuery generated a logging function with a different
- *    `cid` value.  Each call to the returned query function increases the
- *    `qid` value associated with that `cid`.
  */
 
 var mysql = require('mysql');
@@ -31,7 +21,23 @@ var indent = utils.indent;
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/* Creates a wrapper around a pool/connection query function */
+/*
+ * loggedQuery(connection)
+ * -----------
+ *
+ * Query logging
+ *
+ * Creates a wrapper around a pool/connection query function
+ *
+ * query is function with same signatures as mysql's connection.query
+ *
+ * Each call to loggedQuery generated a logging function with a different cid
+ * value.  Each call to the returned query function increases the qid value
+ * associated with that cid.
+ *
+ * ### Example
+ *     query = loggedQuery(connection)
+ */
 var cid_static = 0;
 ORM.prototype.loggedQuery = function (connection) {
 	var qid_static = 0;

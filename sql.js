@@ -1,10 +1,14 @@
 'use strict';
+
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
+ *
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -23,10 +27,10 @@ var shift = utils.shift;
 
 /*
  * SELECT <fields>
+ * ------
  *
  * `$fields` can contain a mix of field references and field names.
  * Defaults to '*' if no fields are specified.
- * 
  */
 module.exports.select = function (self, table, criteria, callback) {
 	if (_(criteria).has('$fields')) {
@@ -49,21 +53,23 @@ module.exports.select = function (self, table, criteria, callback) {
 
 /*
  * DELETE
+ * ------
  *
- * No point making this async, it can never take parameters.
- * QUICK and IGNORE are irrelevant as performance is not an objective of this
- * package.
+ * No point making this async-style, it can never take parameters.  QUICK and
+ * IGNORE are irrelevant as performance is not an objective of this package.
  *
  * Then again, I like having my clause lists in async.parallel, and as stated,
- * performance is not important in this library.
+ * performance is not important in this library, so "async style" it is.
  */
 module.exports.delete = function (callback) {
 	callback(null, 'DELETE');
 }
 
 /*
- * Table name: table can be a string or a table reference.
- * 
+ * table name
+ * ----------
+ *
+ * Table can be a string or a table reference.
  */
 function tableName(table, callback) {
 	if (_(table).isString()) {
@@ -79,9 +85,9 @@ function tableName(table, callback) {
 
 /*
  * INSERT INTO <table name>
+ * -----------
  *
- * `table` can be a table reference or a table name.
- * 
+ * Table can be a table reference or a table name.
  */
 module.exports.insertInto = function (self, table, criteria, callback) {
 	tableName(table, function (err, res) {
@@ -94,9 +100,9 @@ module.exports.insertInto = function (self, table, criteria, callback) {
 
 /*
  * UPDATE <table name>
+ * ------
  *
- * `table` can be a table reference or a table name.
- * 
+ * Table can be a table reference or a table name.
  */
 module.exports.update = function (self, table, criteria, callback) {
 	tableName(table, function (err, res) {
@@ -109,9 +115,9 @@ module.exports.update = function (self, table, criteria, callback) {
 
 /*
  * FROM <table name>
+ * ----
  *
- * `table` can be a table reference or a table name.
- * 
+ * Table can be a table reference or a table name.
  */
 module.exports.from = function (self, table, criteria, callback) {
 	tableName(table, function (err, res) {
@@ -124,11 +130,11 @@ module.exports.from = function (self, table, criteria, callback) {
 
 /*
  * WHERE <criteria>
+ * -----
  *
- * Properties of `criteria` with names that don't begin with '$' are used
- * to generate search constraints.  Foreign row IDs are looked up where
- * necessary to generate these constraints.
- * 
+ * Properties of criteria with names that don't begin with '$' are used to
+ * generate search constraints.  Foreign row IDs are looked up where necessary
+ * to generate these constraints.
  */
 module.exports.where = function (self, table, criteria, callback) {
 	var self = shift(arguments);
@@ -155,12 +161,12 @@ module.exports.where = function (self, table, criteria, callback) {
 
 /*
  * ORDER BY <field [direction]>
+ * --------
  *
- * `$sort` property of the criteria, or (as fallback) the table are used
- * to generate sorting instructions.  `$sort` can be a field name/reference
- * or an array of such.  Begin field names with +/- to specify ascending or
- * descending sort order.
- * 
+ * criteria.$sort property, or (as fallback) table.$sort are used to generate
+ * sorting instructions.  $sort can be a field name/reference or an array of
+ * such.  Begin field names with +/- to specify ascending or descending sort
+ * order.
  */
 module.exports.orderby = function (self, table, criteria, callback) {
 	var sort = _(criteria).has('$sort') ? criteria.$sort : _(table).has('$sort') ? table.$sort : null;
@@ -195,10 +201,9 @@ module.exports.orderby = function (self, table, criteria, callback) {
 
 /*
  * LIMIT <count> [OFFSET <start>]
+ * -----
  *
- * Uses a combination of `$first`, `$last` and `$count` to generate a
- * LIMIT clause.
- * 
+ * Uses a combination of $first, $last and $count to generate a LIMIT clause.
  */
 module.exports.limit = function (self, table, criteria, callback) {
 	var lparams =
@@ -219,9 +224,9 @@ module.exports.limit = function (self, table, criteria, callback) {
 
 /*
  * ON DUPLICATE KEY UPDATE <name = VALUES(name), ...>
+ * -----------------------
  *
  * Generates a list of copy assignments
- *
  */
 module.exports.onDuplicateKeyUpdate = function (self, keys, callback) {
 	callback(null,
@@ -234,9 +239,9 @@ module.exports.onDuplicateKeyUpdate = function (self, keys, callback) {
 
 /*
  * SET <name = value, ...>
+ * ---
  *
  * Generates a list of assignments
- *
  */
 module.exports.set = function (self, keys, row, callback) {
 	if (!keys) {
@@ -250,8 +255,13 @@ module.exports.set = function (self, keys, row, callback) {
 		).join(',\n\t'));
 };
 
-/* Returns a criteria object */
-/* TODO: Move this to util.js, it isn't a SQL generator */
+/*
+ * getCriteria
+ * -----------
+ *
+ * Returns a criteria object
+ * TODO: Move this to util.js, it isn't a SQL generator
+ */
 module.exports.getCriteria = function (IdOrCriteria) {
 	var criteria = {};
 	if (_(IdOrCriteria).isNumber() || _(IdOrCriteria).isString()) {

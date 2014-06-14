@@ -1,57 +1,13 @@
 'use strict';
-
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
  *
- */
-
-/*
- * Colourful logging
- *
- *  logLevel: int
- *
- *    Sets the logging level.
- *      0: all messages are ignored including fatal errors.  Do not use this
- *      level.
- *      1: only fatal errors are logged (and are also thrown).
- *      2: warnings are also logged.
- *      3: info is also logged.
- *      4: for those who use CFLAGS="-O99" because "-O98" code is just too slow.
- *
- *    logLevel = 2 (default)
- *   
- *
- *  log(level, msg)
- *
- *    Logs a message at a custom level
- *
- *    log(cli.olive('POTATO'), 'I am a potato');
- *
- *
- *  error(msg)
- *
- *    Logs the given message at FAIL level, then throws it as an Error, if
- *    logLevel >= 1.  If logLevel !>= 1, stuff will go horribly wrong.
- *
- *    error('Access denied to backend database');
- *
- *
- *  warn(msg)
- *
- *    Logs the given message at WARN level.
- *
- *    warn('dropTables specified, dropping all tables');
- *
- *
- *  info(msg)
- *
- *    Logs the given message at INFO level.
- *
- *    info('Executing query ' + sql);
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -60,9 +16,25 @@ var cli = require('cli-color');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/* 0=you_have_deathwish, 1=errors, 2=warnings, 3=info */
+/*
+ * logLevel: int
+ * --------
+ *
+ * Sets the logging level.
+ *  + 0: all messages are ignored including fatal errors.  Do not use this
+ *    level.
+ *  + 1: only fatal errors are logged (and are also thrown).
+ *  + 2: warnings are also logged.
+ *  + 3: info is also logged.
+ *  + 4: for those who use CFLAGS="-O99" because "-O98" code is just too slow.
+ *
+ * ### Default
+ *
+ *     logLevel = 2
+ */
 ORM.prototype.logLevel = 2;
 
+/* Used in DEBUG mode only, quit whining already */
 function sleep(delay) {
 	/*
 	 * OMG, a blocking operation in node.js, the developer of this package
@@ -73,14 +45,37 @@ function sleep(delay) {
 	while (new Date().getTime() < stop) ;
 }
 
-/* Logging with pretty colours */
+/*
+ * log(level, msg)
+ * ---
+ *
+ * Logging with pretty colours
+ *
+ * Logs a message at a custom level
+ *
+ * ### Example
+ *
+ *     log(cli.olive('POTATO'), 'I am a potato');
+ */
 ORM.prototype.log = function (level, msg) {
 	console.log(cli.green('mysql-orm') + ' ' + level + ' ' + msg);
 	if (this.debug) sleep(50);
 	return msg;
 }
 
-/* Throws an exception */
+/*
+ * error(msg)
+ * -----
+ *
+ * **Throws an exception**
+ *
+ * Logs the given message at FAIL level, then throws it as an Error, if
+ * logLevel >= 1.  If logLevel !>= 1, stuff will go horribly wrong.
+ *
+ * ### Example
+ *
+ *     error('Access denied to backend database');
+ */
 ORM.prototype.error = function (msg) {
 	if (this.logLevel >= 1) {
 		this.log(cli.red.bold('FAIL'), msg);
@@ -90,7 +85,16 @@ ORM.prototype.error = function (msg) {
 	return msg;
 }
 
-/* Warning */
+/*
+ * warn(msg)
+ * ----
+ *
+ * Logs the given message at WARN level.
+ *
+ * ### Example
+ *
+ *     warn('dropTables specified, dropping all tables');
+ */
 ORM.prototype.warn = function (msg) {
 	if (this.logLevel >= 2) {
 		this.log(cli.yellow('WARN'), msg);
@@ -99,7 +103,16 @@ ORM.prototype.warn = function (msg) {
 	return msg;
 }
 
-/* Information */
+/*
+ * info(msg)
+ * ----
+ *
+ * Logs the given message at INFO level.
+ *
+ * ### Example
+ *
+ *     info('Executing query ' + sql);
+ */
 ORM.prototype.info = function (msg) {
 	if (this.logLevel >= 3) {
 		this.log(cli.cyan('INFO'), msg);

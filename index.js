@@ -1,10 +1,13 @@
 'use strict';
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
+ *
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -12,19 +15,139 @@ var mysql = require('mysql');
 var async = require('async');
 var _ = require('underscore');
 
+/*
+ * exports.create
+ * --------------
+ *
+ * Use this to create an ORM instance.  The parameters are passed through to the
+ * ORM constructor.  See the documentation for the ORM constructor, below.
+ *
+ *     var mysqlOrm = require('mysql-orm');
+ *     var orm = mysqlOrm.create(schema, data, options, function (err, orm) {
+ *       if (err) throw err;
+ *       ...
+ *     });
+ */
 module.exports.create = function (schema, defaultdata, options, onready) {
 	return new ORM(schema, defaultdata, options, onready);
 };
 
 
-/* ORM constructor */
 /*
- * options:
- * 	- database: Name of database
- * 	- debug: debug mode (slow logger)
- * 	? recreateDatabase: Drop the database first
- * 	? recreateTables: Drop the tables first
- * 	? logLevel: Log level (do not set to < 1, default is highest [3])
+ * ORM constructor
+ * ---------------
+ *
+ *  + schema - Defines the structure of the database and the relations.
+ *    This is described below.
+ *  + defaultdata - Initial data to put in database if we (re-)create it.
+ *    This is described below.
+ *  + options - ORM configuration
+ *    + database - Name of the database
+ *    + mysql - MySQL connection parameters (felixge/node-mysql)
+ *    + debug - Slows the logger
+ *    + logLevel - Set the logging verbosity. **MUST BE >= 1**
+ *      1. Errors only (throws them after logging)
+ *      2. Warnings and level 1
+ *      3. Debugging info and level 2
+ *    + recreateDatabase - Drop the database and recreate it **DANGER**
+ *    + recreateTables - Drop tables and recreate them **DANGER**
+ *    + skipChecks - Don't check existence of database and tables (causes
+ *      recreate* params to be ignored), don't initialise database, onready is
+ *
+ * ### Dataset definition
+ *
+ *     defaultdata = {
+ *       table-name: [
+ *         { field-name: field-value, field-name: field-value, ... }
+ *       ],
+ *       table-name: [
+ *         ...
+ *       ],
+ *       ...
+ *     }
+ *
+ *     field-value = <value> | reference-criteria
+ *
+ * ### Example dataset using reference criteria
+ *
+ *     var defaultdata = {
+ *       users: [
+ *         {
+ *           name: 'Mark',
+ *           age: 25,
+ *           country: { id: 370 },
+ *           role: { name: 'admin' }
+ *         }
+ *       ],
+ *       countries: [
+ *         { id: 44, name: 'United Kingdom' },
+ *         { id: 370, name: 'Lithuania' },
+ *         { id: 372: name: 'Estonia' }
+ *       ]
+ *     };
+ *
+ *
+ * ### Schema definition
+ *
+ *     schema = {
+ *       [ $types: type-aliases, ]
+ *       table-name: table-definition,
+ *       table-name: table-definition,
+ *       ...
+ *     }
+ *
+ * #### Type aliases
+ *
+ *     type-aliases = [
+ *       alias-name: basic-type,
+ *       alias-name: basic-type,
+ *       ...
+ *     ]
+ *
+ * #### Table definitions
+ *
+ *     // <id: '::id'> is automatically added to all tables for now
+ *     table-definition = {
+ *       [ $primary: field-list, ]    // Not implemented yet
+ *       [ $sort: field-list, ]
+ *       field: field-definition,
+ *       field: field-definition,
+ *       ...
+ *     }
+ *
+ * #### Field definitions
+ *
+ *     field-definition = 'type-name[,index][,unique][,nullable][,cascade]'
+ *     
+ *     field-definition =  {
+ *       type: type-name,
+ *       [ index: boolean ],
+ *       [ unique: boolean ],
+ *       [ nullable: boolean ],
+ *       [ default: value ],
+ *       [ onDelete: reference-option ],
+ *       [ onUpdate: reference-option ],
+ *       [ references: field-definition | table-name ]    // Not tested yet
+ *     }
+ *
+ * #### Types
+ *
+ *     type-name = alias-name | basic-type
+ *
+ *     basic-type = database-type | reference-type
+ *
+ *     database-type = 'VARCHAR(16)', 'TIMESTAMP', 'BIT', 'INTEGER', etc
+ *
+ *     reference-type = ':table-name'
+ *
+ * #### Field list
+ *
+ *     field-list = 'field-name' | ['field-name', 'field-name', ...]
+ *
+ * #### Reference option
+ *
+ *     reference-option = 'set null' | 'cascade' | 'ignore'
+ *
  */
 function ORM(schema, defaultdata, options, onready) {
 	var self = this;
@@ -49,8 +172,23 @@ function ORM(schema, defaultdata, options, onready) {
 	this.types = schema.$types;
 	var autogen = require('./autogen');
 	autogen.initialise_schema(this);
-	async.series(
-		[
+	var createConnectionPool = function () {
+		options.mysql.database = options.database;
+		self.connection = mysql.createPool(options.mysql);
+		self.query = self.loggedQuery(self.connection);
+	};
+	/* No checks - connect to the DB and return synchronously */
+	if (options.skipChecks) {
+		createConnectionPool();
+		self.ready = true;
+		if (_(onready).isFunction()) {
+			onready(null, self);
+		}
+		return;
+	}
+	/* Statup checks */
+	async.series([
+			/* Create database */
 			function (callback) {
 				self.connection = mysql.createConnection(options.mysql);
 				self.query = self.loggedQuery(self.connection);
@@ -60,12 +198,12 @@ function ORM(schema, defaultdata, options, onready) {
 			function (callback) {
 				self.connection.end(callback);
 			},
+			/* Create connection pool */
 			function (callback) {
-				options.mysql.database = options.database;
-				self.connection = mysql.createPool(options.mysql);
-				self.query = self.loggedQuery(self.connection);
-				callback();
+				createConnectionPool();
+				callback(null);
 			},
+			/* Create tables and initialize data */
 			async.apply(autogen.create_tables, self, options.recreateTables),
 			function (callback) {
 				if (defaultdata && (options.recreateTables || options.recreateDatabase)) {

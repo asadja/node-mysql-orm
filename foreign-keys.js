@@ -1,62 +1,24 @@
 'use strict';
-
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
+ *
+ * Released under GNU General Public License, Version 2
  *
  */
 
 /*
  * Foreign key support
+ * -------------------
  *
- *  The options `query` parameter is a function (format, params, callback),
+ *  The options query parameter is a function (format, params, callback),
  *  such as the mysql connection.query method.  This allows intercepting of
  *  queries (e.g. for logging) and transactional operations even when the ORM
  *  is using a connection pool.
- *
- *
- *  listForeignKeys(table)
- *
- *    Returns an array of names of fields in `table` which have a foreign key
- *    constraint.
- *
- *    var names = listForeignKeys(schema.users);
- *
- *
- *  lookupForeignId([query], field, criteria, callback)
- *
- *    Looks up the `id` of the parent record, identified by search `criteria`
- *
- *    lookupForeignKey(
- *      schema.users.country,
- *      { name: 'Estonia' },
- *      function (err, value) { ... });
- *
- *
- *  lookupForeignIds([query], table, row, callback);
- *
- *    Any foreign-key fields in `row` which contain an object are assumed to be
- *    search `criteria`.  `lookupForeignId` is used to fill in their
- *    corresponding `id` values.  Those values of `row` are replaced with the
- *    `id` values, then the same (modified) row object is passed to the
- *    callback.
- *
- *    lookupForeignIds(
- *      schema.users,
- *      {
- *        name: 'mark',
- *        country: { name: 'Estonia' },
- *        role: { name: 'admin' }
- *      },
- *      function (err, value) { ... });
- *
- *
- *
- *  TODO: Document lookupForeignRow[s], which operates in a very simular way,
- *  but looks up entire rows from ID values instead of ID values from rows...
  */
 
 var mysql = require('mysql');
@@ -70,14 +32,36 @@ var shift = utils.shift;
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
-/* Lists the foreign keys of a table */
+/*
+ * listForeignKeys(table)
+ * ---------------
+ *
+ * Returns an array of names of fields in the table which have a foreign key
+ * constraint.
+ *
+ * ### Example
+ *
+ *     var names = listForeignKeys(schema.users);
+ */
 ORM.prototype.listForeignKeys = function (table) {
+	if (_(table).isString()) {
+		table = this.schema[table];
+	}
 	return names(table).filter(function (col) { return !!table[col].references; });
 };
 
 /*
- * Looks up the ID corresponding to a record in a parent table, using
- * constraints from the child record
+ * lookupForeignId([query], field, criteria, callback)
+ * ---------------
+ *
+ * Looks up the id of the parent record, identified by search criteria. Returns
+ * an error if no or if multiple parent records are found.  In such a case, the
+ * second callback paremeter is zero or two for no or multiple records found.
+ *
+ * ### Example
+ *
+ *     lookupForeignKey(schema.users.country, { name: 'Estonia' },
+ *       function (err, value) { ... });
  */
 ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
@@ -104,13 +88,36 @@ ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 							(res.length > 1 ? 'Multiple' : 'No') +
 							' foreign ids (' + foreignName + ') found' +
 							(_(localName).isString() ? ' for ' + localName : '') +
-							' with criteria ' + JSON.stringify(criteria))));
+							' with criteria ' + JSON.stringify(criteria))),
+							res.length);
 			}
 			callback(null, res[0][foreign.$name]);
 		});
 };
 
-/* Looks up all foreign key values for a row */
+/*
+ *  lookupForeignIds([query], table, row, callback)
+ *  ----------------
+ *
+ * Looks up all foreign key values for a row
+ *
+ * Any foreign-key fields in row which contain an object are assumed to be
+ * search criteria.  lookupForeignId is used to fill in their corresponding id
+ * values.  Those values of row are replaced with the id values, then the same
+ * (modified) row object is passed to the callback.
+ *
+ * ### Example
+ *
+ *     lookupForeignIds(schema.users,
+ *       {
+ *         name: 'mark',
+ *         country: { name: 'Estonia' },
+ *         role: { name: 'admin' }
+ *       },
+ *       function (err, value) { ... });
+ *
+ *     // value.country = 372, value.role = <some id value>
+ */
 ORM.prototype.lookupForeignIds = function (table, row, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
@@ -160,6 +167,13 @@ ORM.prototype.lookupForeignRow = function (field, id, callback) {
 		});
 };
 
+/*
+ * lookupForeignRow(table, row, callback)
+ * ----------------
+ *
+ * **TODO**: Document lookupForeignRow[s], which operates in a very simular way,
+ * but looks up entire rows from ID values instead of ID values from rows...
+ */
 ORM.prototype.lookupForeignRows = function (table, row, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), row = shift(arguments), callback = shift(arguments);

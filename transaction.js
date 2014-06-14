@@ -2,27 +2,13 @@
 
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
  *
- */
-
-/*
- * Acquires a connection [from the pool if pooled] and begins a transaction
- *
- * The connection is released back to the pool after rollback or after a
- * successful commit [if pooled].
- *
- *  beginTransaction(callback)
- *
- *    callback = function (err, { connection, query, commit, rollback })
- *
- *      connection: database connection
- *      query: connection.query (tapped for logging)
- *      commit: function (callback(err))
- *      rollback function (callback(err))
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -31,6 +17,22 @@ var cli = require('cli-color');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
+/*
+ * beginTransaction(callback)
+ * ----------------
+ *
+ * Acquires a connection [from the pool if pooled] and begins a transaction
+ *
+ * The connection is released back to the pool after rollback or after a
+ * successful commit [if pooled].
+ *
+ * callback = function (err, { connection, query, commit, rollback })
+ *
+ *  + connection: database connection
+ *  + query: connection.query (tapped for logging)
+ *  + commit: function (callback(err))
+ *  + rollback function (callback(err))
+ */
 ORM.prototype.beginTransaction = function (callback) {
 	var self = this;
 	var pooled = this.connection.getConnection;

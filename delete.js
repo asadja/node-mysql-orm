@@ -1,23 +1,13 @@
 'use strict';
-
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
  *
- */
-
-
-/*
- * Delete operations
- *
- *  delete(table, id|criteria, callback)
- *
- *    Deletes row(s) that match the given criteria.
- *
- *    delete(schema.users, 2, function (err, res) { ... });
+ * Released under GNU General Public License, Version 2
  *
  */
 
@@ -33,6 +23,25 @@ var sql = require('./sql');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
+/*
+ * delete(table, idOrCriteria, callback)
+ * ------
+ *
+ * Delete one or more rows from a table
+ *
+ *  + table - Table name or reference
+ *  + IdOrCriteria - primary key value or search criteria
+ *  + callback - function (error, deletedRowCount)
+ *
+ * ### Example using primary key value
+ *
+ *     delete(schema.users, 2, function (err, res) { ... });
+ *
+ * ### Example using foreign value
+ *
+ *     delete(schema.users, { role: { name: 'guest' } }, callback);
+ *
+ */
 ORM.prototype.delete = function (table, IdOrCriteria, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), IdOrCriteria = shift(arguments), callback = shift(arguments);

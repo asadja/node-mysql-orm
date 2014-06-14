@@ -2,133 +2,19 @@
 
 /*
  * MySQL object-relational mapping
+ * ===============================
  *
- * (C) 2014 Mark K Cowan, mark@battlesnake.co.uk
+ * (C) 2014 Mark K Cowan <mark@battlesnake.co.uk>
  *
- * Released under `GNU General Public License, Version 2`
+ * https://github.com/battlesnake/node-mysql-orm
+ *
+ * Released under GNU General Public License, Version 2
  *
  */
 
 /*
- * Save operations
- *
- *  NOTE: `REPLACE` will not be supported as it (quite rightly) wrecks foreign
- *  keys.  if you want to replace, do a `delete` followed by a `save`.
- *
- *  save(table, row, callback)
- *
- *    Save a single `row` to `table`, updating when the primary key value
- *    matches an existing row and inserting otherwise.  Foreign key values are
- *    looked up automatically.
- *
- *    `table` is a table definition from the `schema`.
- *
- *    `row` is an object representing the values to save.  Foreign key values
- *    are resolved, see the foreign-keys module for more information.
- *
- *    `callback` is called on completion.
- *
- *    `row.$saveMode` is an optional parameter which is cleared by save. It can
- *    be 'new', 'existing', or 'always' (defaul):
- *      * new: create new row, fail if `row.id` already exists
- *      * existing: update existing row, fail if `row.id` is not found
- *      * always: create new row if possible, update existing row otherwise.
- *
- *    // The following adds a new record as no primary key `id` was specified
- *    save(
- *      schema.users,
- *      {
- *        name: 'mark',
- *        role: { value: 'admin' },
- *        country: { value: 'Lithuania' }
- *      },
- *      function (err) { ... });
- *
- *    // The following will update an existing record if the `id` already
- *    // exists in the table, otherwise it will insert a new record
- *    save(
- *      schema.users,
- *      {
- *        id: 1,
- *        name: 'mark',
- *        role: { value: 'admin' },
- *        country: { value: 'Lithuania' }
- *      },
- *      function (err) { ... });
- *
- *  saveMany(table, rows, callback)
- *
- *    Saves a load of `rows` to the `table`, updating when the primary key
- *    value matches an existing row and inserting otherwise.  Foreign key
- *    values are looked up automatically.  Internally, this calls `save`.
- *
- *    `table` is a table definition from the `schema`.
- *
- *    `rows` is an array of rows to save.  Foreign key values are resolved,
- *    see the foreign-keys module for more information.
- *
- *    `callback` is called on completion.
- *
- *    Individual rows may have `$saveMode` set, see save() for information
- *    about this property.  It is deleted after being read.
- *
- *    saveMany(
- *      schema.users,
- *      [
- *        {
- *          id: 1,
- *          name: 'mark',
- *          country: { value: 'United Kingdom' },
- *          role: { value: 'admin' }
- *        },
- *        {
- *          id: 2,
- *          name: 'marili',
- *          country: { value: 'Estonia' },
- *          role: { value: 'ploom' },
- *          $saveMode: 'existing'
- *        },
- *      ],
- *      function (err) { .. });
- *
- *
- *  saveMultipleTables(data, callback)
- *
- *    `data` is an object of the form { tableName: rows, tableName: rows, ... }.
- *    
- *    `callback` is a function (err)
- *
- *    `$saveMode` may be specified on individual rows, it is cleared upon save.
- *    See save() for more information about this property.
- *
- *    Note: tables are procesed in the order that their fields appear in the
- *    `data` object.  This relies on V8 honouring field order, which ECMAScript
- *    specs do not require it to do.  This also makes circular dependencies on
- *    foreign keys impossible to process with a single call to this function.
- *    Internally, this calls `saveMany`.
- *
- *    saveMultipletables(
- *      {
- *        countries: [
- *          { id: 44, name: 'United Kingdom' },
- *          { id: 372, name: 'Estonia' }],
- *        roles: [
- *          { name: 'admin', rights: '*' },
- *          { name: 'ploom', rights: 'being_awesome,being_a_ploom' }],
- *        users: [
- *          { 
- *            name: 'mark',
- *            country: { name: 'United Kingdom' },
- *            role: { name: 'admin' }
- *          },
- *          {
- *            name: 'marili',
- *            country: { name: 'Estonia' },
- *            role: { name: 'ploom' }
- *          }]
- *      },
- *      function (err) { ... });
- *
+ * NOTE: REPLACE will not be supported as it (quite rightly) wrecks foreign
+ * keys.  if you want to replace, do a delete followed by a save.
  */
 
 var mysql = require('mysql');
@@ -143,6 +29,49 @@ var sql = require('./sql');
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
 
+/*
+ * save(table, row, callback)
+ * ----
+ *
+ * Save a single row to table, updating when the primary key value matches an
+ * existing row and inserting otherwise.  Foreign key values are looked up
+ * automatically.
+ *
+ *  + table - A table definition from the schema.
+ *  + row - An object representing the values to save.  Foreign key values
+ *    are resolved, see the foreign-keys module for more information.
+ *     + row.$saveMode - An optional parameter which is cleared by save. It can
+ *       be 'new', 'existing', or 'always' (default):
+ *        + new: create new row, fail if row.id already exists
+ *        + existing: update existing row, fail if row.id is not found
+ *        + always: create new row if possible, update existing row otherwise.
+ *
+ * ### Example which creates a new record
+ *
+ *     // The following adds a new record as no primary key id was specified
+ *     save(
+ *       schema.users,
+ *       {
+ *         name: 'mark',
+ *         role: { value: 'admin' },
+ *         country: { value: 'Lithuania' }
+ *       },
+ *       function (err) { ... });
+ *
+ * ### Example which saves to existing record, or creates new one if not found
+ *
+ *     // The following will update an existing record if the id already
+ *     // exists in the table, otherwise it will insert a new record
+ *     save(
+ *       schema.users,
+ *       {
+ *         id: 1,
+ *         name: 'mark',
+ *         role: { value: 'admin' },
+ *         country: { value: 'Lithuania' }
+ *       },
+ *       function (err) { ... });
+ */
 ORM.prototype.save = function (table, row, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
@@ -221,7 +150,44 @@ ORM.prototype.save = function (table, row, callback) {
 		function (err) { callback(err); });
 };
 
-/* Resolves foreign key values and saves sets of rows to the database */
+/*
+ * saveMany(table, rows, callback)
+ * --------
+ *
+ * Resolves foreign key values and saves sets of rows to the database
+ *
+ * Saves a load of rows to the table, updating when the primary key value
+ * matches an existing row and inserting otherwise.  Foreign key values are
+ * looked up automatically.  Internally, this calls save.
+ *
+ *  + table - A table definition from the schema.
+ *  + rows - An array of rows to save.  Foreign key values are resolved, see the
+ *    foreign-keys module for more information.
+ *
+ * Individual rows may have $saveMode set, see save() for information
+ * about this property.  It is deleted after being read.
+ *
+ * ### Example
+ *
+ *     saveMany(
+ *       schema.users,
+ *       [
+ *         {
+ *           id: 1,
+ *           name: 'mark',
+ *           country: { value: 'United Kingdom' },
+ *           role: { value: 'admin' }
+ *         },
+ *         {
+ *           id: 2,
+ *           name: 'marili',
+ *           country: { value: 'Estonia' },
+ *           role: { value: 'ploom' },
+ *           $saveMode: 'existing'
+ *         },
+ *       ],
+ *       function (err) { .. });
+ */
 ORM.prototype.saveMany = function (table, rows, callback) {
 	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
 	table = shift(arguments), rows = shift(arguments), callback = shift(arguments);
@@ -234,7 +200,48 @@ ORM.prototype.saveMany = function (table, rows, callback) {
 		function (err) { callback(err); });
 };
 
-/* Save sets of rows to several tables, looking up foreign keys where needed */
+/*
+ * saveMultipleTables(data, callback)
+ * ------------------
+ *
+ * Save sets of rows to several tables, looking up foreign keys where needed.
+ *
+ *  + data - An object of the form { tableName: rows, tableName: rows, ... }.
+ *    
+ * $saveMode may be specified on individual rows, it is cleared upon save.
+ * See save() for more information about this property.
+ *
+ * Note: tables are procesed in the order that their fields appear in the data
+ * object.  This relies on V8 honouring field order, which ECMAScript specs do
+ * not require it to do.  This also makes circular dependencies on foreign keys
+ * impossible to process with a single call to this function.  Internally, this
+ * calls saveMany.
+ *
+ * ### Example
+ *
+ *     saveMultipletables(
+ *       {
+ *         countries: [
+ *           { id: 44, name: 'United Kingdom' },
+ *           { id: 372, name: 'Estonia' }],
+ *         roles: [
+ *           { name: 'admin', rights: '*' },
+ *           { name: 'ploom', rights: 'being_awesome,being_a_ploom' }],
+ *         users: [
+ *           { 
+ *             name: 'mark',
+ *             country: { name: 'United Kingdom' },
+ *             role: { name: 'admin' }
+ *           },
+ *           {
+ *             name: 'marili',
+ *             country: { name: 'Estonia' },
+ *             role: { name: 'ploom' }
+ *           }]
+ *       },
+ *       function (err) { ... });
+ *
+ */
 ORM.prototype.saveMultipleTables = function (data, callback) {
 	var self = this;
 	this.beginTransaction(function (err, transaction) {
