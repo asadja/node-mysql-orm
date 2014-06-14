@@ -28,12 +28,15 @@ module.exports.create = function (schema, defaultdata, options, onready) {
  */
 function ORM(schema, defaultdata, options, onready) {
 	var self = this;
-	this.debug = options.debug;
+	this.debug = options.debug || process.env.DEBUG_MYSQL_ORM;
 	if (!schema || !options || !onready) {
 		throw new Error('Required parameter missing');
 	}
 	if (_(options).has('logLevel')) {
 		this.logLevel = options.logLevel;
+		if (process.env.DEBUG_MYSQL_ORM) {
+			this.logLevel = 9;
+		}
 	}
 	if (!options.database) {
 		throw new Error('Compulsory option (lol) `database` not specified');
@@ -42,7 +45,7 @@ function ORM(schema, defaultdata, options, onready) {
 		throw new Error('Compulsory option (lol) `mysql` not specified');
 	}
 	this.database = options.database;
-	this.schema = schema;
+	this.schema = JSON.parse(JSON.stringify(schema));
 	this.types = schema.$types;
 	var autogen = require('./autogen');
 	autogen.initialise_schema(this);

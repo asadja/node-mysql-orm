@@ -14,10 +14,11 @@
  *
  * Schema: { $types: definitions, table: definition, table: definition, ... }
  *
- * Table: { [ $no_id: boolean, ] field: definition, field: definition, ... }
+ * Table: { [ $primary: array/string, ] field: definition, field: definition, ... }
+ * TODO: custom primary fields
  *
  * Field:
- *  String notation: 'type[,primary][,index][,unique][,nullable]'
+ *  String notation: 'type[,index][,unique][,nullable]'
  *  Object notation: { type: 'varchar(10)', index: true, unique: false, nullable: false ... }
  *
  * Internal types:
@@ -51,7 +52,7 @@ function initialise_schema(orm) {
 		table.$schema = orm.schema;
 		table.$name = tableName;
 		/* All tables must have an ID primary key */
-		if (!_(table).has('id') && !table.$no_id) {
+		if (!_(table).has('id') && !table.$primary) {
 			table.id = { type: '::id' };
 		}
 		keys(table).forEach(function (fieldName) {
@@ -61,7 +62,6 @@ function initialise_schema(orm) {
 				var f = field.split(',');
 				field = {};
 				field.type = f.shift();
-				field.primary = _(f).contains('primary');
 				field.unique = _(f).contains('unique');
 				field.index = _(f).contains('index');
 				field.nullable = _(f).contains('nullable');
