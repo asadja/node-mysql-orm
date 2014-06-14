@@ -3,7 +3,7 @@ mysql-orm [![Build Status](https://travis-ci.org/battlesnake/node-mysql-orm.svg?
 
 For node.js: MySQL wrapper providing object mapping, automatic table generation via JSON schema, automatic foreign key generation and resolution, indexes, default values, reference options and more.
 
-A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.
+A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.  Inline documentation is provided in the source files, and HTML versions in the docs/ folder.
 
 # Install
 
@@ -180,6 +180,8 @@ This will create the database if it does not exist and create the tables if they
 If `recreateTables` or `recreateDatabase` is specified, then the `data` will be added to the database.
 Note that this will not occur if the tables/database are created but the `recreate*` parameters were not set.
 CAUTION: `recreateTables` / `recreateDatabase` are for development purposes only, they WILL cause orm to drop the database and tables if they already exist.
+
+If `skipChecks` is `true` in the options, mysql-orm will not check for existence of the database or the tables, will not regenerate them even if `recreate*` are set, and it will return synchronously.
 
 ```node
 var mysql_orm = require('mysql_orm');
