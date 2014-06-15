@@ -163,7 +163,7 @@ module.exports.names = function (obj) {
 function ORM(schema, defaultdata, options, onready) {
 	var self = this;
 	this.debug = options.debug || process.env.DEBUG_MYSQL_ORM;
-	if (!schema || !options || !onready) {
+	if (!schema || !options || (!options.skipChecks && !onready)) {
 		throw new Error('Required parameter missing');
 	}
 	if (_(options).has('logLevel')) {
