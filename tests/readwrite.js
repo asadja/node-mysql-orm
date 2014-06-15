@@ -88,7 +88,7 @@ module.exports = function (orm ,callback) {
 			}
 
 			orm.test('Replacing country "United Kingdom" with "Scottish Federation"');
-			orm.save(orm.schema.countries, { id:44, name:'Scottish Federation' }, callback);
+			orm.save(orm.schema.countries, { id:44, name:'Scottish Federation' }, { save: 'existing' }, callback);
 		},
 		function (callback) {
 			orm.load(orm.schema.users, 1, callback);

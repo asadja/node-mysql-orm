@@ -15,6 +15,8 @@ var mysql = require('mysql');
 var async = require('async');
 var _ = require('underscore');
 
+var utils = require('./utils');
+
 // mysql-orm
 // =========
 // MySQL wrapper for nodejs with focus on foreign keys, rapid development, and
@@ -33,6 +35,14 @@ var _ = require('underscore');
 // 
 module.exports.create = function (schema, defaultdata, options, onready) {
 	return new ORM(schema, defaultdata, options, onready);
+};
+
+// names
+// -----
+// Returns an array of names of properties of the object excluding names that
+// begin with a '$' symbol.
+module.exports.names = function (obj) {
+	return utils.names(obj);
 };
 
 

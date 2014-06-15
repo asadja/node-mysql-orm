@@ -36,21 +36,30 @@ var indent = utils.indent;
 //    primary key field.
 //  + Expands shorthand string definitions to object definitions.
 //
+// TODO: Define prototypes instead of assigning $type to each one
+//
 module.exports.initialise_schema = initialise_schema;
 function initialise_schema(orm) {
 	var schema = orm.schema;
 	schema.$name = orm.database;
 	schema.$orm = orm;
 	schema.$fullname = '(' + orm.database + ')';
+	schema.$type = 'schema';
 	names(schema).forEach(function initialise_table(tableName) {
 		orm.info('schema ' + tableName);
 		var table = schema[tableName];
 		table.$name = tableName;
 		table.$schema = schema;
 		table.$fullname = mysql.escapeId(tableName);
+		table.$type = 'table';
 		if (!_(table).has('id') && !_(table).has('$primary')) {
 			table.id = { type: '::id' };
+			table.$primary = 'id';
 		}
+		if (_(table.$primary).isString()) {
+			table.$primary = [table.$primary];
+		}
+		table.$primary = table.$primary || [];
 		names(table).forEach(function initialise_field(fieldName) {
 			orm.info('schema ' + Array(tableName.length + 1).join(' ') + '.' +
 				fieldName);
@@ -65,6 +74,7 @@ function initialise_schema(orm) {
 			field.$table = table;
 			field.$schema = schema;
 			field.$fullname = fullname;
+			field.$type = 'field';
 		});
 	});
 }

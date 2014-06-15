@@ -5,6 +5,8 @@ For node.js: MySQL wrapper providing object mapping, automatic table generation 
 
 A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.  Inline documentation is provided in the source files, and HTML versions in the docs/ folder.
 
+I recommend using the HTML documentation rather than the documentation below, as the HTML documentation is up-to-date.
+
 # Install
 
 ```sh
@@ -261,7 +263,7 @@ orm.save(orm.schema.users, { id: 1, role: { name: 'pleb' } }, function (err) {
  * passed object is set to the new row's ID in the database.
  */
 var guestRole = { name: 'guest', rights: 'read_posts,like_posts' };
-orm.save(orm.schema.users, guestRole, function (err) {
+orm.save(orm.schema.roles, guestRole, function (err) {
 	if (err) throw err;
 	console.log('ID of guest role in roles table is ' + guestRole.id);
 });
@@ -298,14 +300,9 @@ orm.saveMultipleTables(
 ### Deleting data
 
 ```node
-/*
- * There is no deleteMany; delete will remove any and all matching
- * records.  As with load, a numeric value is interpreted as an ID
- * while an object is interpreted as key-value pairs which will be
- * looked up in parent tables when needed.
- */
 orm.delete(orm.schema.users, 1, callback);
 orm.delete(orm.schema.countries, { name: 'Atlantis' }, callback);
+orm.deleteMany(orm.schema.posts, { user: { name: 'Bob' } }, callback);
 ```
 
 # Debugging

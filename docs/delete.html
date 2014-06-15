@@ -48,14 +48,15 @@ module.exports = ORM.prototype;
 
 <p>Deletes data from the database</p>
 
-<h2>delete(table, idOrCriteria, callback)</h2>
+<h2>delete([query] table id|criteria callback)</h2>
 
-<p>Delete one or more rows from a table</p>
+<p>Delete one row from a table</p>
 
 <ul>
 <li>table - Table name or reference</li>
-<li>IdOrCriteria - primary key value or search criteria</li>
-<li>callback - function (error, deletedRowCount)</li>
+<li>id - Row ID (primary key value)</li>
+<li>criteria - Object containing search criteria</li>
+<li>callback - (err)</li>
 </ul>
 
 <h3>Example using primary key value</h3>
@@ -67,10 +68,68 @@ module.exports = ORM.prototype;
 <p>delete(schema.users, { role: { name: 'guest' } }, callback);</p>
 </div>
 <code class="lit-code">
-ORM.prototype.<span class="keyword">delete</span> = <span class="function"><span class="keyword">function</span> <span class="params">(table, IdOrCriteria, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), IdOrCriteria = shift(arguments), callback = shift(arguments);
-  <span class="keyword">var</span> criteria = sql.getCriteria(IdOrCriteria);
+ORM.prototype.<span class="keyword">delete</span> = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> criteria = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  async.parallel([
+      async.apply(sql.select, <span class="keyword">this</span>, table.$primary),
+      async.apply(sql.from, <span class="keyword">this</span>, table, criteria),
+      async.apply(sql.where, <span class="keyword">this</span>, query, table, criteria),
+      async.apply(sql.limit, <span class="keyword">this</span>, { count: <span class="number">2</span>})
+    ],
+    <span class="function"><span class="keyword">function</span> <span class="params">(err, sqlParts)</span> {</span>
+      <span class="keyword">if</span> (err) {
+        <span class="keyword">return</span> callback(err);
+      }
+      query(_(sqlParts).compact().join(<span class="string">'\n'</span>), <span class="literal">null</span>, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+        <span class="keyword">if</span> (err) {
+          <span class="keyword">return</span> callback(err);
+        }
+        <span class="keyword">if</span> (res.length === <span class="number">0</span>) {
+          <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Item not found'</span>), <span class="literal">false</span>);
+        }
+        <span class="keyword">else</span> <span class="keyword">if</span> (res.length > <span class="number">1</span>) {
+          <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Multiple items matched'</span>), <span class="literal">true</span>);
+        }
+        self.deleteMany(query, table, res[<span class="number">0</span>], callback);
+      });
+    });
+};
+</code>
+</section>
+<section>
+<div class="lit-comment">
+<h2>deleteMany([query] table id|criteria callback)</h2>
+
+<p>Delete one or more rows from a table</p>
+
+<ul>
+<li>table - Table name or reference</li>
+<li>id - Row ID (primary key value)</li>
+<li>criteria - Object containing search criteria</li>
+<li>callback - (err, deleted_row_count)</li>
+</ul>
+
+<h3>Example using primary key value</h3>
+
+<p>deleteMany(schema.users, 2, function (err, res) { ... });</p>
+
+<h3>Example using foreign value</h3>
+
+<p>deleteMany(schema.users, { role: { name: 'guest' } }, callback);</p>
+</div>
+<code class="lit-code">
+ORM.prototype.<span class="keyword">delete</span> = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> criteria = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.parallel([
       async.apply(sql.<span class="keyword">delete</span>),
       async.apply(sql.from, <span class="keyword">this</span>, table, criteria),

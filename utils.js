@@ -20,23 +20,8 @@ var _ = require('underscore');
 // ====
 // Internally-used utilities
 
-// shift
-// =====
-// **Normal use will break in ES6, as `arguments` becomes immutable in ES6**
-//
-// Like Array.prototype.shift, but operates on arguments too
-
-module.exports.shift = function (args) {
-	var shifted = args[0];
-	for (var i = 0; i < args.length; i++) {
-		args[i] = args[i + 1];
-	}
-	args.length--;
-	return shifted;
-}
-
 // indent
-// ======
+// ------
 // Indents a multiline string
 //
 module.exports.indent = function (str) {
@@ -44,7 +29,7 @@ module.exports.indent = function (str) {
 };
 
 // names
-// =====
+// -----
 // Get a list of object names within the given object.  Returns all field names
 // that don't begin with `$`.
 //
@@ -53,4 +38,71 @@ module.exports.names = function (obj) {
 		function (key) {
 			return key.charAt(0) !== '$';
 		});
+};
+
+// args
+// ----
+// Arguments parser for:
+//
+//     function ([query, ] table|field, [criteria, [options, ]] callback)
+//
+module.exports.parse_args = function (orm, args, wantsField) {
+	args = [].slice.apply(args);
+	var params = {};
+	params.query = (function () {
+		return (_(args[0]).isFunction() && args[0].name === 'query') ?
+			args.shift() : orm.query;
+	})();
+	if (wantsField) {
+		params.field = (function () {
+			return args.shift();
+		})();
+	}
+	else {
+		params.table = (function () {
+			var table = args.shift();
+			if (_(table).isString()) {
+				return orm.schema[table];
+			}
+			else if (_(table).isObject() && table.$type === 'table') {
+				return orm.schema[table.$name];
+			}
+			else {
+				return table;
+			}
+		})();
+	}
+	params.callback = (function () {
+		var callback = args.pop();
+		if (!_(callback).isFunction()) {
+			throw new Error('Callback is not a function!');
+		}
+		return callback;
+	})();
+	params.data = (function () {
+		var data = args.shift();
+		if (_(data).isNull() || _(data).isUndefined()) {
+			return {};
+		}
+		if (wantsField) {
+			return data;
+		}
+		if (_(data).isString() || _(data).isNumber()) {
+			if (params.table.$primary.length !== 1) {
+				return callback(new Error('Table "' + params.table.$name +
+					'" has no simple primary key, please specify a search ' +
+					'key explicitly'));
+			}
+			return _.object([params.table.$primary[0]], [data]);
+		}
+		return data;
+	})();
+	var hasOptions;
+	params.options = (function () {
+		var options = args.shift();
+		hasOptions = !!options && options != {};
+		return options || {};
+	})();
+	params.hasOptions = hasOptions;
+	return params;
 };
