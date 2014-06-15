@@ -68,12 +68,18 @@ function parse_schema(orm) {
 			if (field.type === '::id') {
 				field.type = 'INTEGER';
 				field.auto_increment = true;
-				if (table.$primary) {
+				if (table.$primary.length > 0 &&
+					!((table.$primary).length === 1
+						&& table.$primary[0] === fieldName)) {
 					return orm.error('Cannot parse field "' + field.$fullname +
 						'": table "' + table.$fullname + '" already has ' +
 						'primary key(s) specified');
 				}
-				table.$primary = fieldName;
+				table.$primary = [fieldName];
+			}
+			/* Auto-increment */
+			if (field.auto_increment) {
+				table.$auto_increment = fieldName;
 			}
 			/* Implicit references */
 			if (field.type.charAt(0) === ':') {
@@ -158,15 +164,19 @@ function resolve_field(orm, fullname, str) {
 	if (table.charAt(0) === '$' || !_(orm.schema).has(table)) {
 		return orm.error(err('Table ' + mysql.escapeId(table) + ' not found'));
 	}
-	var field = path.shift() || orm.schema[table].$primary;
-	if (_(field).isArray()) {
-		return orm.error(err('Target table "' + table + '" has a composite ' +
-			'primary key and no target field was explicitly specified in the ' +
-			'relation definition'));
-	}
-	if (_(field).isNull() || _(field).isUndefined()) {
-		return orm.error(err('No field was specified and the table has no ' +
-			'primary key defined to use as default'));
+	var field = path.shift();
+	if (_(field).isUndefined()) {
+		if (orm.schema[table].$primary.length > 1) {
+			return orm.error(err('Target table "' + table + '" has a ' +
+				'composite primary key and no target field was explicitly ' +
+				'specified in the relation definition'));
+		} else
+		if (orm.schema[table].$primary.length === 0) {
+			return orm.error(err('No field was specified and the target ' +
+				'table "' + table + '" has no primary key defined to use as ' +
+				'default'));
+		}
+		field = orm.schema[table].$primary[0];
 	}
 	if (field.charAt(0) === '$' || !_(orm.schema[table]).has(field)) {
 		return orm.error(err('Field ' + mysql.escapeId(field) + ' was not ' +

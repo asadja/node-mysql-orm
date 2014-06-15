@@ -35,9 +35,10 @@
 <span class="keyword">var</span> _ = require(<span class="string">'underscore'</span>);
 
 <span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
-<span class="keyword">var</span> names = utils.names;
-<span class="keyword">var</span> shift = utils.shift;
 <span class="keyword">var</span> sql = require(<span class="string">'./sql'</span>);
+
+<span class="keyword">var</span> names = utils.names;
+<span class="keyword">var</span> parse_args = utils.parse_args;
 
 <span class="keyword">var</span> ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -51,7 +52,7 @@ module.exports = ORM.prototype;
 
 <p>NOTE: REPLACE will not be supported as it (quite rightly) wrecks foreign<br />keys.  if you want to replace, do a delete followed by a save.</p>
 
-<h2>save(table, row, callback)</h2>
+<h2>save([query] table row [options] callback)</h2>
 
 <p>Save a single row to table, updating when the primary key value matches an<br />existing row and inserting otherwise.  Foreign key values are looked up<br />automatically.</p>
 
@@ -59,11 +60,11 @@ module.exports = ORM.prototype;
 <li>table - A table definition from the schema.</li>
 <li>row - An object representing the values to save.  Foreign key values
 are resolved, see the foreign-keys module for more information.</li>
-<li>row.$saveMode - An optional parameter which is cleared by save. It can
-be 'new', 'existing', or 'always' (default):</li>
-<li>new: create new row, fail if row.id already exists</li>
-<li>existing: update existing row, fail if row.id is not found</li>
-<li>always: create new row if possible, update existing row otherwise.</li>
+<li>options</li>
+<li>save - Specifies whether save can create/overwrite rows.</li>
+<li>'new' - Only create a new row, fail on existing id</li>
+<li>'existing' - Only update existing row, fail if id is not found</li>
+<li>'always' (default) - create or update</li>
 </ul>
 
 <h3>Example which creates a new record</h3>
@@ -75,23 +76,31 @@ be 'new', 'existing', or 'always' (default):</li>
 <p>// The following will update an existing record if the id already<br />// exists in the table, otherwise it will insert a new record<br />save(<br />schema.users,<br />{<br />id: 1,<br />name: 'mark',<br />role: { value: 'admin' },<br />country: { value: 'Lithuania' }<br />},<br />function (err) { ... });</p>
 </div>
 <code class="lit-code">
-ORM.prototype.save = <span class="function"><span class="keyword">function</span> <span class="params">(table, row, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-  <span class="keyword">var</span> cols = shift(arguments) || <span class="keyword">this</span>.listForeignKeys(table);
+ORM.prototype.save = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> row = args.data;
+  <span class="keyword">var</span> options = args.options;
+  <span class="keyword">var</span> callback = args.callback;
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  <span class="keyword">var</span> lookup = options.lookup || <span class="keyword">this</span>.listForeignKeys(table);
   async.waterfall([
       <span class="function"><span class="keyword">function</span> <span class="params">(callback)</span> {</span>
-        self.lookupForeignIds(query, table, row, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span> row = res; callback(err); }, cols);
+        self.lookupForeignIds(query, table, row, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+            row = res;
+            callback(err);
+          }, cols);
       },
       <span class="function"><span class="keyword">function</span> <span class="params">(callback)</span> {</span>
-        <span class="keyword">var</span> saveMode = row.$saveMode || <span class="string">'always'</span>;
+        <span class="keyword">var</span> saveMode = options.save || <span class="string">'always'</span>;
         <span class="keyword">delete</span> row.$saveMode;
         <span class="keyword">if</span> (saveMode === <span class="string">'always'</span>) {
           async.parallel([
-              async.apply(sql.insertInto, self, table, <span class="literal">null</span>),
+              async.apply(sql.insertInto, self, table),
               async.apply(sql.set, self, names(row), row),
-              async.apply(sql.onDuplicateKeyUpdate, self, _(names(row)).without([<span class="string">'id'</span>]))
+              async.apply(sql.onDuplicateKeyUpdate, self,
+                _(names(row)).without([<span class="string">'id'</span>]))
             ],
             <span class="function"><span class="keyword">function</span> <span class="params">(err, data)</span> {</span>
               <span class="keyword">if</span> (err) {
@@ -102,7 +111,7 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
         }
         <span class="keyword">else</span> <span class="keyword">if</span> (saveMode === <span class="string">'new'</span>) {
           async.parallel([
-              async.apply(sql.insertInto, self, table, <span class="literal">null</span>),
+              async.apply(sql.insertInto, self, table),
               async.apply(sql.set, self, names(row), row),
             ],
             <span class="function"><span class="keyword">function</span> <span class="params">(err, data)</span> {</span>
@@ -113,13 +122,16 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
             });
         }
         <span class="keyword">else</span> <span class="keyword">if</span> (saveMode === <span class="string">'existing'</span>) {
-          <span class="keyword">if</span> (!_(row).has(<span class="string">'id'</span>)) {
-            <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Cannot save to existing row: no ID specified'</span>));
+          <span class="keyword">if</span> (table.$primary.length === <span class="number">0</span>) {
+            <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Cannot save to existing '</span> +
+              <span class="string">'row: table has no primary key'</span>));
           }
+          <span class="keyword">var</span> criteria = _.object(table.$primary,
+            _(row).pick(table.$primary));
           async.parallel([
-              async.apply(sql.update, self, table, <span class="literal">null</span>),
+              async.apply(sql.update, self, table),
               async.apply(sql.set, self, _(names(row)).without(<span class="string">'id'</span>), row),
-              async.apply(sql.where, self, table, { id: row.id })
+              async.apply(sql.where, self, table, criteria)
             ],
             <span class="function"><span class="keyword">function</span> <span class="params">(err, data)</span> {</span>
               <span class="keyword">if</span> (err) {
@@ -138,12 +150,11 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
               <span class="keyword">return</span> callback(err);
             }
             <span class="keyword">if</span> (res.affectedRows === <span class="number">0</span>) {
-              <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Failed to save row with mode '</span> + saveMode));
+              <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Failed to save row '</span> +
+                <span class="string">'with mode '</span> + saveMode));
             }
-            <span class="keyword">if</span> (_(res).has(<span class="string">'insertId'</span>) &amp;&amp; _(res.insertId).isNumber()) {
-              <span class="keyword">if</span> (_(table).has(<span class="string">'id'</span>)) {
-                row.id = res.insertId;
-              }
+            <span class="keyword">if</span> (_(res).has(<span class="string">'insertId'</span>)) {
+              row[table.$auto_increment] = res.insertId;
             }
             callback(err);
           });
@@ -156,7 +167,7 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
 </section>
 <section>
 <div class="lit-comment">
-<h2>saveMany(table, rows, callback)</h2>
+<h2>saveMany([query] table rows [options] callback)</h2>
 
 <p>Resolves foreign key values and saves sets of rows to the database</p>
 
@@ -166,23 +177,25 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
 <li>table - A table definition from the schema.</li>
 <li>rows - An array of rows to save.  Foreign key values are resolved, see the
 foreign-keys module for more information.</li>
+<li>options - see documentation for save()</li>
 </ul>
-
-<p>Individual rows may have $saveMode set, see save() for information<br />about this property.  It is deleted after being read.</p>
 
 <h3>Example</h3>
 
-<p>saveMany(<br />schema.users,<br />[<br />{<br />id: 1,<br />name: 'mark',<br />country: { value: 'United Kingdom' },<br />role: { value: 'admin' }<br />},<br />{<br />id: 2,<br />name: 'marili',<br />country: { value: 'Estonia' },<br />role: { value: 'ploom' },<br />$saveMode: 'existing'<br />},<br />],<br />function (err) { .. });</p>
+<p>saveMany(<br />schema.users,<br />[<br />{<br />id: 1,<br />name: 'mark',<br />country: { value: 'United Kingdom' },<br />role: { value: 'admin' }<br />},<br />{<br />id: 2,<br />name: 'marili',<br />country: { value: 'Estonia' },<br />role: { value: 'ploom' },<br />},<br />],<br />{ save: 'existing' },<br />function (err) { .. });</p>
 </div>
 <code class="lit-code">
-ORM.prototype.saveMany = <span class="function"><span class="keyword">function</span> <span class="params">(table, rows, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), rows = shift(arguments), callback = shift(arguments);
-  <span class="keyword">var</span> cols = shift(arguments) || <span class="keyword">this</span>.listForeignKeys(table);
+ORM.prototype.saveMany = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> rows = args.data;
+  <span class="keyword">var</span> options = args.options;
+  <span class="keyword">var</span> callback = args.callback;
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.each(rows,
     <span class="function"><span class="keyword">function</span> <span class="params">(row, callback)</span> {</span>
-      self.save(query, table, row, callback, cols);
+      self.save(query, table, row, options, callback);
     },
     <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span> callback(err); });
 };
@@ -197,8 +210,6 @@ ORM.prototype.saveMany = <span class="function"><span class="keyword">function</
 <ul>
 <li>data - An object of the form { tableName: rows, tableName: rows, ... }.</li>
 </ul>
-
-<p>$saveMode may be specified on individual rows, it is cleared upon save.<br />See save() for more information about this property.</p>
 
 <p>Note: tables are procesed in the order that their fields appear in the data<br />object.  This relies on V8 honouring field order, which ECMAScript specs do<br />not require it to do.  This also makes circular dependencies on foreign keys<br />impossible to process with a single call to this function.  Internally, this<br />calls saveMany.</p>
 

@@ -17,9 +17,10 @@ var async = require('async');
 var _ = require('underscore');
 
 var utils = require('./utils');
-var names = utils.names;
-var shift = utils.shift;
 var sql = require('./sql');
+
+var names = utils.names;
+var parse_args = utils.parse_args;
 
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -33,7 +34,7 @@ module.exports = ORM.prototype;
 //
 
 // 
-// save(table, row, callback)
+// save([query] table row [options] callback)
 // ----
 // 
 // Save a single row to table, updating when the primary key value matches an
@@ -43,11 +44,11 @@ module.exports = ORM.prototype;
 //  + table - A table definition from the schema.
 //  + row - An object representing the values to save.  Foreign key values
 //    are resolved, see the foreign-keys module for more information.
-//     + row.$saveMode - An optional parameter which is cleared by save. It can
-//       be 'new', 'existing', or 'always' (default):
-//        + new: create new row, fail if row.id already exists
-//        + existing: update existing row, fail if row.id is not found
-//        + always: create new row if possible, update existing row otherwise.
+//  + options
+//     + save - Specifies whether save can create/overwrite rows.
+//        + 'new' - Only create a new row, fail on existing id
+//        + 'existing' - Only update existing row, fail if id is not found
+//        + 'always' (default) - create or update
 // 
 // ### Example which creates a new record
 // 
@@ -75,23 +76,29 @@ module.exports = ORM.prototype;
 //       },
 //       function (err) { ... });
 // 
-ORM.prototype.save = function (table, row, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-	var cols = shift(arguments) || this.listForeignKeys(table);
+ORM.prototype.save = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var row = args.data;
+	var options = args.options;
+	var callback = args.callback;
 	var self = this;
 	async.waterfall([
 			function (callback) {
-				self.lookupForeignIds(query, table, row, function (err, res) { row = res; callback(err); }, cols);
+				self.lookupForeignIds(query, table, row, function (err, res) {
+						row = res;
+						callback(err);
+					});
 			},
 			function (callback) {
-				var saveMode = row.$saveMode || 'always';
-				delete row.$saveMode;
+				var saveMode = options.save || 'always';
 				if (saveMode === 'always') {
 					async.parallel([
-							async.apply(sql.insertInto, self, table, null),
+							async.apply(sql.insertInto, self, table),
 							async.apply(sql.set, self, names(row), row),
-							async.apply(sql.onDuplicateKeyUpdate, self, _(names(row)).without(['id']))
+							async.apply(sql.onDuplicateKeyUpdate, self,
+								_(names(row)).without(['id']))
 						],
 						function (err, data) {
 							if (err) {
@@ -102,7 +109,7 @@ ORM.prototype.save = function (table, row, callback) {
 				}
 				else if (saveMode === 'new') {
 					async.parallel([
-							async.apply(sql.insertInto, self, table, null),
+							async.apply(sql.insertInto, self, table),
 							async.apply(sql.set, self, names(row), row),
 						],
 						function (err, data) {
@@ -113,13 +120,16 @@ ORM.prototype.save = function (table, row, callback) {
 						});
 				}
 				else if (saveMode === 'existing') {
-					if (!_(row).has('id')) {
-						return callback(new Error('Cannot save to existing row: no ID specified'));
+					if (table.$primary.length === 0) {
+						return callback(new Error('Cannot save to existing ' +
+							'row: table has no primary key'));
 					}
+					var criteria = _.object(table.$primary,
+						_(row).pick(table.$primary));
 					async.parallel([
-							async.apply(sql.update, self, table, null),
+							async.apply(sql.update, self, table),
 							async.apply(sql.set, self, _(names(row)).without('id'), row),
-							async.apply(sql.where, self, table, { id: row.id })
+							async.apply(sql.where, self, query, table, criteria)
 						],
 						function (err, data) {
 							if (err) {
@@ -138,12 +148,11 @@ ORM.prototype.save = function (table, row, callback) {
 							return callback(err);
 						}
 						if (res.affectedRows === 0) {
-							return callback(new Error('Failed to save row with mode ' + saveMode));
+							return callback(new Error('Failed to save row ' +
+								'with mode ' + saveMode));
 						}
-						if (_(res).has('insertId') && _(res.insertId).isNumber()) {
-							if (_(table).has('id')) {
-								row.id = res.insertId;
-							}
+						if (_(res).has('insertId')) {
+							row[table.$auto_increment] = res.insertId;
 						}
 						callback(err);
 					});
@@ -154,7 +163,7 @@ ORM.prototype.save = function (table, row, callback) {
 };
 
 // 
-// saveMany(table, rows, callback)
+// saveMany([query] table rows [options] callback)
 // --------
 // 
 // Resolves foreign key values and saves sets of rows to the database
@@ -166,9 +175,7 @@ ORM.prototype.save = function (table, row, callback) {
 //  + table - A table definition from the schema.
 //  + rows - An array of rows to save.  Foreign key values are resolved, see the
 //    foreign-keys module for more information.
-// 
-// Individual rows may have $saveMode set, see save() for information
-// about this property.  It is deleted after being read.
+//  + options - see documentation for save()
 // 
 // ### Example
 // 
@@ -186,19 +193,22 @@ ORM.prototype.save = function (table, row, callback) {
 //           name: 'marili',
 //           country: { value: 'Estonia' },
 //           role: { value: 'ploom' },
-//           $saveMode: 'existing'
 //         },
 //       ],
+//       { save: 'existing' },
 //       function (err) { .. });
 // 
-ORM.prototype.saveMany = function (table, rows, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), rows = shift(arguments), callback = shift(arguments);
-	var cols = shift(arguments) || this.listForeignKeys(table);
+ORM.prototype.saveMany = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var rows = args.data;
+	var options = args.options;
+	var callback = args.callback;
 	var self = this;
 	async.each(rows,
 		function (row, callback) {
-			self.save(query, table, row, callback, cols);
+			self.save(query, table, row, options, callback);
 		},
 		function (err) { callback(err); });
 };
@@ -211,9 +221,6 @@ ORM.prototype.saveMany = function (table, rows, callback) {
 // 
 //  + data - An object of the form { tableName: rows, tableName: rows, ... }.
 //    
-// $saveMode may be specified on individual rows, it is cleared upon save.
-// See save() for more information about this property.
-// 
 // Note: tables are procesed in the order that their fields appear in the data
 // object.  This relies on V8 honouring field order, which ECMAScript specs do
 // not require it to do.  This also makes circular dependencies on foreign keys
@@ -244,7 +251,6 @@ ORM.prototype.saveMany = function (table, rows, callback) {
 //       },
 //       function (err) { ... });
 // 
-// 
 ORM.prototype.saveMultipleTables = function (data, callback) {
 	var self = this;
 	this.beginTransaction(function (err, transaction) {
@@ -255,7 +261,9 @@ ORM.prototype.saveMultipleTables = function (data, callback) {
 				function (callback) {
 					async.eachSeries(names(data),
 						function (tableName, callback) {
-							self.saveMany(transaction.query, self.schema[tableName], data[tableName], callback);
+							if (data[tableName]) {
+								self.saveMany(transaction.query, tableName, data[tableName], callback);
+							}
 						},
 						callback);
 				},

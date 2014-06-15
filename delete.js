@@ -28,14 +28,15 @@ module.exports = ORM.prototype;
 // Deletes data from the database
 
 // 
-// delete(table, idOrCriteria, callback)
-// ------
+// delete([query] table id|criteria callback)
+// ----------
 // 
-// Delete one or more rows from a table
-// 
+// Delete one row from a table
+//
 //  + table - Table name or reference
-//  + IdOrCriteria - primary key value or search criteria
-//  + callback - function (error, deletedRowCount)
+//  + id - Row ID (primary key value)
+//  + criteria - Object containing search criteria
+//  + callback - (err)
 // 
 // ### Example using primary key value
 // 
@@ -46,10 +47,65 @@ module.exports = ORM.prototype;
 //     delete(schema.users, { role: { name: 'guest' } }, callback);
 // 
 // 
-ORM.prototype.delete = function (table, IdOrCriteria, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), IdOrCriteria = shift(arguments), callback = shift(arguments);
-	var criteria = sql.getCriteria(IdOrCriteria);
+ORM.prototype.delete = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var criteria = args.data;
+	var callback = args.callback;
+	var self = this;
+	async.parallel([
+			async.apply(sql.select, this, table.$primary),
+			async.apply(sql.from, this, table, criteria),
+			async.apply(sql.where, this, query, table, criteria),
+			async.apply(sql.limit, this, { count: 2})
+		],
+		function (err, sqlParts) {
+			if (err) {
+				return callback(err);
+			}
+			query(_(sqlParts).compact().join('\n'), null, function (err, res) {
+				if (err) {
+					return callback(err);
+				}
+				if (res.length === 0) {
+					return callback(new Error('Item not found'), false);
+				}
+				else if (res.length > 1) {
+					return callback(new Error('Multiple items matched'), true);
+				}
+				self.deleteMany(query, table, res[0], callback);
+			});
+		});
+};
+
+// 
+// deleteMany([query] table id|criteria callback)
+// ----------
+// 
+// Delete one or more rows from a table
+//
+//  + table - Table name or reference
+//  + id - Row ID (primary key value)
+//  + criteria - Object containing search criteria
+//  + callback - (err, deleted_row_count)
+// 
+// ### Example using primary key value
+// 
+//     deleteMany(schema.users, 2, function (err, res) { ... });
+// 
+// ### Example using foreign value
+// 
+//     deleteMany(schema.users, { role: { name: 'guest' } }, callback);
+// 
+// 
+ORM.prototype.delete = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var criteria = args.data;
+	var callback = args.callback;
+	var self = this;
 	async.parallel([
 			async.apply(sql.delete),
 			async.apply(sql.from, this, table, criteria),

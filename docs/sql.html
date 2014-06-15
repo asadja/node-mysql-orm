@@ -50,11 +50,11 @@
 <p><code>$fields</code> can contain a mix of field references and field names.<br />Defaults to '*' if no fields are specified.</p>
 </div>
 <code class="lit-code">
-module.exports.select = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
-  <span class="keyword">if</span> (_(criteria).has(<span class="string">'$fields'</span>)) {
-    <span class="keyword">var</span> fields = criteria.$fields.map(
+module.exports.select = <span class="function"><span class="keyword">function</span> <span class="params">(self, fields, callback)</span> {</span>
+  <span class="keyword">if</span> (fields) {
+    fields = fields.map(
       <span class="function"><span class="keyword">function</span> <span class="params">(field)</span> {</span>
-        <span class="keyword">if</span> (_(field).has(<span class="string">'$name'</span>)) {
+        <span class="keyword">if</span> (field.$type === <span class="string">'field'</span>) {
           <span class="keyword">return</span> field.$name;
         }
         <span class="keyword">else</span> {
@@ -95,11 +95,12 @@ module.exports.<span class="keyword">delete</span> = <span class="function"><spa
   <span class="keyword">if</span> (_(table).isString()) {
     <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.escapeId(table));
   }
-  <span class="keyword">else</span> <span class="keyword">if</span> (_(table).has(<span class="string">'$name'</span>)) {
+  <span class="keyword">else</span> <span class="keyword">if</span> (_(table).$type === <span class="string">'table'</span>) {
     <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.escapeId(table.$name));
   }
   <span class="keyword">else</span> {
-    <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Unknown table specification: '</span> + table));
+    <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Unknown table specification: "'</span> + table +
+      <span class="string">'"'</span>));
   }
 }
 </code>
@@ -111,7 +112,7 @@ module.exports.<span class="keyword">delete</span> = <span class="function"><spa
 <p>Table can be a table reference or a table name.</p>
 </div>
 <code class="lit-code">
-module.exports.insertInto = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
+module.exports.insertInto = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, callback)</span> {</span>
   tableName(table, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
     <span class="keyword">if</span> (err) {
       <span class="keyword">return</span> callback(err);
@@ -128,7 +129,7 @@ module.exports.insertInto = <span class="function"><span class="keyword">functio
 <p>Table can be a table reference or a table name.</p>
 </div>
 <code class="lit-code">
-module.exports.update = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
+module.exports.update = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, callback)</span> {</span>
   tableName(table, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
     <span class="keyword">if</span> (err) {
       <span class="keyword">return</span> callback(err);
@@ -145,7 +146,7 @@ module.exports.update = <span class="function"><span class="keyword">function</s
 <p>Table can be a table reference or a table name.</p>
 </div>
 <code class="lit-code">
-module.exports.from = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
+module.exports.from = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, callback)</span> {</span>
   tableName(table, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
     <span class="keyword">if</span> (err) {
       <span class="keyword">return</span> callback(err);
@@ -166,9 +167,6 @@ module.exports.from = <span class="function"><span class="keyword">function</spa
 </div>
 <code class="lit-code">
 module.exports.where = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
-  <span class="keyword">var</span> self = shift(arguments);
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
   <span class="keyword">var</span> cols = names(criteria);
   <span class="keyword">if</span> (cols.length) {
     self.lookupForeignIds(query, table, criteria, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
@@ -196,20 +194,20 @@ module.exports.where = <span class="function"><span class="keyword">function</sp
 <p>criteria.$sort property, or (as fallback) table.$sort are used to generate<br />sorting instructions.  $sort can be a field name/reference or an array of<br />such.  Begin field names with +/- to specify ascending or descending sort<br />order.</p>
 </div>
 <code class="lit-code">
-module.exports.orderby = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
-  <span class="keyword">var</span> sort = _(criteria).has(<span class="string">'$sort'</span>) ? criteria.$sort : _(table).has(<span class="string">'$sort'</span>) ? table.$sort : <span class="literal">null</span>;
-  <span class="keyword">if</span> (sort !== <span class="literal">null</span> &amp;&amp; sort.length) {
+module.exports.orderby = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, sort, callback)</span> {</span>
+  <span class="keyword">var</span> sort = sort || table.$sort || [];
+  <span class="keyword">if</span> (sort.length) {
     <span class="keyword">if</span> (_(sort).isString()) {
       sort = [sort];
     }
     <span class="keyword">return</span> callback(<span class="literal">null</span>, <span class="string">'ORDER BY\n\t'</span> + sort.map(<span class="function"><span class="keyword">function</span> <span class="params">(field)</span> {</span>
-      <span class="keyword">if</span> (<span class="keyword">typeof</span> field === <span class="string">'object'</span>) {
-        <span class="keyword">if</span> (_(field).has(<span class="string">'$name'</span>) &amp;&amp; _(field).has(<span class="string">'$table'</span>)) {
-          field = field.$name;
-        }
-        <span class="keyword">else</span> {
-          <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'$sort must either be a field name, a field reference, or an array of field names/references'</span>));
-        }
+      <span class="keyword">if</span> (field.$type === <span class="string">'field'</span>) {
+        field = field.$name;
+      }
+      <span class="keyword">if</span> (!_(field).isString()) {
+        <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'$sort must either be a field '</span> +
+          <span class="string">'name a field reference, or an array of field '</span> +
+          <span class="string">'names/references'</span>));
       }
       <span class="keyword">if</span> (field.charAt(<span class="number">0</span>) === <span class="string">'-'</span>) {
         <span class="keyword">return</span> mysql.escapeId(field.substr(<span class="number">1</span>)) + <span class="string">' DESC'</span>;
@@ -218,7 +216,7 @@ module.exports.orderby = <span class="function"><span class="keyword">function</
         <span class="keyword">return</span> mysql.escapeId(field.substr(<span class="number">1</span>)) + <span class="string">' ASC'</span>;
       }
       <span class="keyword">else</span> {
-        <span class="keyword">return</span> mysql.escapeId(orderby);
+        <span class="keyword">return</span> mysql.escapeId(field);
       }
     }).join(<span class="string">',\n\t'</span>));
   }
@@ -235,20 +233,21 @@ module.exports.orderby = <span class="function"><span class="keyword">function</
 <p>Uses a combination of $first, $last and $count to generate a LIMIT clause.</p>
 </div>
 <code class="lit-code">
-module.exports.limit = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
+module.exports.limit = <span class="function"><span class="keyword">function</span> <span class="params">(self, options, callback)</span> {</span>
   <span class="keyword">var</span> lparams =
-    _(criteria).has(<span class="string">'$first'</span>)?<span class="number">1</span>:<span class="number">0</span> +
-    _(criteria).has(<span class="string">'$count'</span>)?<span class="number">2</span>:<span class="number">0</span> +
-    _(criteria).has(<span class="string">'$last'</span>) ?<span class="number">4</span>:<span class="number">0</span>;
+    _(options).has(<span class="string">'first'</span>)?<span class="number">1</span>:<span class="number">0</span> +
+    _(options).has(<span class="string">'count'</span>)?<span class="number">2</span>:<span class="number">0</span> +
+    _(options).has(<span class="string">'last'</span>) ?<span class="number">4</span>:<span class="number">0</span>;
+  <span class="keyword">var</span> first = options.first, last = options.last, count = options.count;
   <span class="keyword">switch</span> (lparams) {
     <span class="keyword">case</span> <span class="number">0</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>);
-    <span class="keyword">case</span> <span class="number">1</span>: <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'$first value for LIMIT specified, but no $last or $count value'</span>));
-    <span class="keyword">case</span> <span class="number">2</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?'</span>, [criteria.$count])); <span class="keyword">break</span>;
-    <span class="keyword">case</span> <span class="number">3</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [criteria.$count, criteria.$first])); <span class="keyword">break</span>;
-    <span class="keyword">case</span> <span class="number">4</span>:  <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'$last value for LIMIT specified, but no $first or $count value'</span>));
-    <span class="keyword">case</span> <span class="number">5</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [criteria.$last - criteria.$first, criteria.$first])); <span class="keyword">break</span>;
-    <span class="keyword">case</span> <span class="number">6</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [criteria.$count, criteria.$last - criteria.$count])); <span class="keyword">break</span>;
-    <span class="keyword">case</span> <span class="number">7</span>: <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'$first, $last, $count were all specified for LIMIT'</span>));
+    <span class="keyword">case</span> <span class="number">1</span>: <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'first value for LIMIT specified, but no last or count value'</span>));
+    <span class="keyword">case</span> <span class="number">2</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?'</span>, [count])); <span class="keyword">break</span>;
+    <span class="keyword">case</span> <span class="number">3</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [count, first])); <span class="keyword">break</span>;
+    <span class="keyword">case</span> <span class="number">4</span>:  <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'last value for LIMIT specified, but no first or count value'</span>));
+    <span class="keyword">case</span> <span class="number">5</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [last - first, first])); <span class="keyword">break</span>;
+    <span class="keyword">case</span> <span class="number">6</span>: <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.format(<span class="string">'LIMIT ?\nOFFSET ?'</span>, [count, last - count])); <span class="keyword">break</span>;
+    <span class="keyword">case</span> <span class="number">7</span>: <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'first, last, count were all specified for LIMIT'</span>));
   }
 };
 </code>
@@ -287,29 +286,6 @@ module.exports.set = <span class="function"><span class="keyword">function</span
         <span class="keyword">return</span> mysql.format(<span class="string">'?? = ?'</span>, [key, row[key]]);
       }
     ).join(<span class="string">',\n\t'</span>));
-};
-</code>
-</section>
-<section>
-<div class="lit-comment">
-<h2>getCriteria</h2>
-
-<p>Returns a criteria object<br />TODO: Move this to util.js, it isn't a SQL generator</p>
-</div>
-<code class="lit-code">
-module.exports.getCriteria = <span class="function"><span class="keyword">function</span> <span class="params">(IdOrCriteria)</span> {</span>
-  <span class="keyword">var</span> criteria = {};
-  <span class="keyword">if</span> (_(IdOrCriteria).isNumber() || _(IdOrCriteria).isString()) {
-    criteria.id = IdOrCriteria;
-  }
-  <span class="keyword">else</span> {
-    <span class="keyword">for</span> (<span class="keyword">var</span> prop <span class="keyword">in</span> IdOrCriteria) {
-      <span class="keyword">if</span> (_(IdOrCriteria).has(prop)) {
-        criteria[prop] = IdOrCriteria[prop];
-      }
-    }
-  }
-  <span class="keyword">return</span> criteria;
 };
 </code>
 </section>

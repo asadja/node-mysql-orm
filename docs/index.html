@@ -32,6 +32,8 @@
 <span class="keyword">var</span> mysql = require(<span class="string">'mysql'</span>);
 <span class="keyword">var</span> async = require(<span class="string">'async'</span>);
 <span class="keyword">var</span> _ = require(<span class="string">'underscore'</span>);
+
+<span class="keyword">var</span> util = require(<span class="string">'./util'</span>);
 </code>
 </section>
 <section>
@@ -49,6 +51,21 @@
 <code class="lit-code">
 module.exports.create = <span class="function"><span class="keyword">function</span> <span class="params">(schema, defaultdata, options, onready)</span> {</span>
   <span class="keyword">return</span> <span class="keyword">new</span> ORM(schema, defaultdata, options, onready);
+};
+</code>
+</section>
+<section>
+<div class="lit-comment">
+<h2>names</h2>
+
+<p>Returns an array of names of properties of the object excluding names that<br />begin with a '
+</body>
+</html>
+ symbol.</p>
+</div>
+<code class="lit-code">
+module.exports.names = <span class="function"><span class="keyword">function</span> <span class="params">(obj)</span> {</span>
+  <span class="keyword">return</span> util.names(obj);
 };
 </code>
 </section>

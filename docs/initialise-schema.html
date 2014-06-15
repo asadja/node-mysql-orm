@@ -48,6 +48,8 @@
 <h2>initialise_schema</h2>
 
 <p>Initialises the schema:<br />+ Adds references to parent items.<br />+ Stores the name of each item into the item itself.<br />+ Creates primary key field <code>id</code> on tables with no <code>id</code> field and no<br />primary key.  Set <code>table.$primary = []</code> to disable creation of automatic<br />primary key field.<br />+ Expands shorthand string definitions to object definitions.</p>
+
+<p>TODO: Define prototypes instead of assigning $type to each one</p>
 </div>
 <code class="lit-code">
 module.exports.initialise_schema = initialise_schema;
@@ -56,15 +58,22 @@ module.exports.initialise_schema = initialise_schema;
   schema.$name = orm.database;
   schema.$orm = orm;
   schema.$fullname = <span class="string">'('</span> + orm.database + <span class="string">')'</span>;
+  schema.$type = <span class="string">'schema'</span>;
   names(schema).forEach(<span class="function"><span class="keyword">function</span> <span class="title">initialise_table</span><span class="params">(tableName)</span> {</span>
     orm.info(<span class="string">'schema '</span> + tableName);
     <span class="keyword">var</span> table = schema[tableName];
     table.$name = tableName;
     table.$schema = schema;
     table.$fullname = mysql.escapeId(tableName);
+    table.$type = <span class="string">'table'</span>;
     <span class="keyword">if</span> (!_(table).has(<span class="string">'id'</span>) &amp;&amp; !_(table).has(<span class="string">'$primary'</span>)) {
       table.id = { type: <span class="string">'::id'</span> };
+      table.$primary = <span class="string">'id'</span>;
     }
+    <span class="keyword">if</span> (_(table.$primary).isString()) {
+      table.$primary = [table.$primary];
+    }
+    table.$primary = table.$primary || [];
     names(table).forEach(<span class="function"><span class="keyword">function</span> <span class="title">initialise_field</span><span class="params">(fieldName)</span> {</span>
       orm.info(<span class="string">'schema '</span> + Array(tableName.length + <span class="number">1</span>).join(<span class="string">' '</span>) + <span class="string">'.'</span> +
         fieldName);
@@ -79,6 +88,7 @@ module.exports.initialise_schema = initialise_schema;
       field.$table = table;
       field.$schema = schema;
       field.$fullname = fullname;
+      field.$type = <span class="string">'field'</span>;
     });
   });
 }

@@ -33,10 +33,11 @@
 <span class="keyword">var</span> async = require(<span class="string">'async'</span>);
 <span class="keyword">var</span> _ = require(<span class="string">'underscore'</span>);
 
-<span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
-<span class="keyword">var</span> names = utils.names;
-<span class="keyword">var</span> shift = utils.shift;
 <span class="keyword">var</span> sql = require(<span class="string">'./sql'</span>);
+<span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
+
+<span class="keyword">var</span> names = utils.names;
+<span class="keyword">var</span> parse_args = utils.parse_args;
 
 <span class="keyword">var</span> ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -48,80 +49,86 @@ module.exports = ORM.prototype;
 
 <p>Routines for loading data from the database</p>
 
-<h2>load(table, id|criteria, callback)</h2>
+<h2>load([query] table [id|criteria] callback)</h2>
 
 <p>Retrieves a single row from table where the id matches the id parameter, or<br />where the criteria matches.  Returns an error if more than one row was<br />returned, and null if none were.</p>
+
+<ul>
+<li>table - Table name or reference</li>
+<li>id - Row ID (primary key value)</li>
+<li>criteria - Object containing search criteria</li>
+<li>callback - (err, row)</li>
+</ul>
 
 <p>Same usage as loadMany but obviously the LIMIT specifiers are not used.</p>
 </div>
 <code class="lit-code">
-ORM.prototype.load = <span class="function"><span class="keyword">function</span> <span class="params">(table, IdOrCriteria, callback)</span> {</span>
-  <span class="keyword">var</span> criteria = sql.getCriteria(IdOrCriteria);
-  <span class="keyword">delete</span> criteria.$first;
-  <span class="keyword">delete</span> criteria.$last;
-  criteria.$limit = <span class="number">2</span>;
-  <span class="keyword">this</span>.loadMany(table, criteria, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+ORM.prototype.load = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> criteria = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  <span class="keyword">this</span>.loadMany(table, criteria, { count: <span class="number">2</span> }, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
     <span class="keyword">if</span> (err) {
       <span class="keyword">return</span> callback(err);
     }
     <span class="keyword">if</span> (res.length === <span class="number">0</span>) {
-      <span class="keyword">return</span> callback(<span class="literal">null</span>, <span class="literal">null</span>);
-    }
-    <span class="keyword">else</span> <span class="keyword">if</span> (res.length === <span class="number">1</span>) {
-      <span class="keyword">return</span> callback(<span class="literal">null</span>, res[<span class="number">0</span>]);
+      <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Item not found'</span>), <span class="literal">false</span>);
     }
     <span class="keyword">else</span> <span class="keyword">if</span> (res.length > <span class="number">1</span>) {
-      <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Multiple rows were returned for GET operation on table '</span>+(table.$name||table)+<span class="string">' with criteria '</span> + JSON.stringify(criteria)));
+      <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Multiple rows were returned for GET '</span> +
+        <span class="string">'operation on table '</span>+table.$name+<span class="string">' with criteria '</span> +
+        JSON.stringify(criteria)), <span class="literal">true</span>);
     }
+    callback(<span class="literal">null</span>, res[<span class="number">0</span>]);
   });
 };
 </code>
 </section>
 <section>
 <div class="lit-comment">
-<h2>loadMany(table, [criteria], callback)</h2>
+<h2>loadMany([query] table [criteria [options] ] callback)</h2>
 
-<p>Retrieves multiple rows from table where the criteria evaluates to<br />true, or retrieves all rows if no criteria were specified.</p>
+<p>Retrieves all rows from table which match the criteria.</p>
 
-<p>criteria may be null to have all records returned using the default<br />sort specified by table.$sort.</p>
-
-<p>criteria may be a number or a string, indicating the id to lookup.</p>
-
-<p>Ideally, if criteria is not null, it should be an object though.  This<br />makes code more readable and explicit, and also allows some extra query<br />options to be specified:</p>
-
-<p>criteria may include $lookup specifying whether to lookup foreign<br />key values.  If not specified, this defaults to true.</p>
-
-<p>criteria may include $fields array of field names/references, which<br />specified which fields to retrieve.  All fields are retrieved otherwise.</p>
-
-<p>criteria may include $sort which is a field name/reference or an<br />array of field names/references, specifying how to sort the resulting<br />dataset.  A field name may be preceeded by a + or - to indicate sort<br />order.</p>
-
-<p>criteria may include $first, $last or $count specifiers for a<br />LIMIT clause.  Some way to calculate $count is mandatory, i.e. either<br />$count must be specified (optionally with either $first or $last)<br />or $first and $last must both be specified.</p>
+<ul>
+<li>table - Ttble name or reference</li>
+<li>criteria - Object containing search criteria</li>
+<li>options - Extra query options</li>
+<li>lookup (default: true) - Specifies whether to lookup records related
+over foreign keys.  TODO: Number to specify lookup depth.</li>
+<li>fields - Array of names of fields to retrieve.  All fields are
+retrieved if this is not specified.</li>
+<li>sort - Name of field to sort on, or array of fields to sort on.  Prefix
+a <code>+</code> or <code>-</code> to the field name to specify ascending or descending
+order.  You may specify field objects or field names or a mix of both.</li>
+<li>first, last, count - Limit the range of records retrieved.  Any
+combination which allows <code>count</code> to be calculated is valid.</li>
+<li>callback - (err, rows)</li>
+</ul>
 
 <h3>Example:</h3>
 
-<p>loadMany(<br />schema.users,<br />{<br />// role is a foreign key: pass an object as the value to have it<br />// looked up in the parent table.  Non-object values will be treated<br />// as raw values in this table and will not be looked up in the<br />// parent table.  Cry me a river, but this allows one to look up by<br />// ID number on a foreign field, in addition to enjoying the lovely<br />// foreign-key handling provided by this library/framework/module.<br />role: { value: 'admin' },<br />$fields: { schema.users.name, schema.users.id, schema.users.country },<br />$sort: schema.users.name,  //or '+name'<br />$count: 10<br />},<br />function (err, rows) {<br />if (err) throw err;<br />rows.forEach(function (row) {<br />console.log(<br />'Admin #' + row.id + ' ' +<br />'&quot;' + row.name + '&quot; ' +<br />'is from ' + row.country.value);<br />});<br />});</p>
+<p>loadMany(<br />schema.users,<br />{<br />// role is a foreign key: pass an object as the value to have it<br />// looked up in the parent table.  Non-object values will be treated<br />// as raw values in this table and will not be looked up in the<br />// parent table.  Cry me a river if you want a field value returned<br />// instead of an object, but this allows one to look up a record by<br />//  ID number on a foreign field, in addition to enjoying the lovely<br />// foreign-key handling provided by this library/framework/module.<br />role: { value: 'admin' }<br />},<br />{<br />fields: { 'name', schema.users.id, schema.users.country },<br />sort: schema.users.name,  //or '+name'<br />count: 10<br />},<br />function (err, rows) {<br />if (err) throw err;<br />rows.forEach(function (row) {<br />console.log(<br />'Admin #' + row.id + ' ' +<br />'&quot;' + row.name + '&quot; ' +<br />'is from ' + row.country.value);<br />});<br />});</p>
 </div>
 <code class="lit-code">
-ORM.prototype.loadMany = <span class="function"><span class="keyword">function</span> <span class="params">(table, criteria, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
+ORM.prototype.loadMany = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> criteria = args.data;
+  <span class="keyword">var</span> options = args.options;
+  <span class="keyword">var</span> callback = args.callback;
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
-  <span class="keyword">if</span> (_(criteria).isFunction() &amp;&amp; <span class="keyword">typeof</span> callback === <span class="string">'undefined'</span>) {
-    callback = criteria, criteria = {};
-  }
-  <span class="keyword">else</span> <span class="keyword">if</span> (<span class="keyword">typeof</span> criteria === <span class="literal">undefined</span> || criteria === <span class="literal">null</span>) {
-    criteria = {};
-  }
-  <span class="keyword">else</span> <span class="keyword">if</span> (_(criteria).isString() || _(criteria).isNumber()) {
-    criteria = { id: criteria };
-  }
-  <span class="keyword">var</span> lookup = !_(criteria).has(<span class="string">'$lookup'</span>) || criteria.$lookup;
+  <span class="keyword">var</span> lookup = !_(options).has(<span class="string">'lookup'</span>) || criteria.lookup;
   async.parallel([
-      async.apply(sql.select, <span class="keyword">this</span>, table, criteria),
-      async.apply(sql.from, <span class="keyword">this</span>, table, criteria),
+      async.apply(sql.select, <span class="keyword">this</span>, options.fields),
+      async.apply(sql.from, <span class="keyword">this</span>, table),
       async.apply(sql.where, <span class="keyword">this</span>, query, table, criteria),
-      async.apply(sql.orderby, <span class="keyword">this</span>, table, criteria),
-      async.apply(sql.limit, <span class="keyword">this</span>, table, criteria)
+      async.apply(sql.orderby, <span class="keyword">this</span>, table, options.sort),
+      async.apply(sql.limit, <span class="keyword">this</span>, options)
       <span class="comment">/*
        * TODO: JOINs so we can get the foreign key stuff in one operation
        * instead of running several SELECTs on every row which is obviously

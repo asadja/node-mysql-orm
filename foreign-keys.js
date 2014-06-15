@@ -16,8 +16,9 @@ var _ = require('underscore');
 var async = require('async');
 
 var utils = require('./utils');
+
 var names = utils.names;
-var shift = utils.shift;
+var parse_args = utils.parse_args;
 
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -51,7 +52,7 @@ ORM.prototype.listForeignKeys = function (table) {
 };
 
 // 
-// lookupForeignId([query], field, criteria, callback)
+// lookupForeignId([query] field criteria [localname] callback)
 // ---------------
 // 
 // Looks up the id of the parent record, identified by search criteria. Returns
@@ -63,9 +64,13 @@ ORM.prototype.listForeignKeys = function (table) {
 //     lookupForeignKey(schema.users.country, { name: 'Estonia' },
 //       function (err, value) { ... });
 // 
-ORM.prototype.lookupForeignId = function (field, criteria, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	field = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
+ORM.prototype.lookupForeignId = function () {
+	var args = parse_args(this, arguments, true);
+	var query = args.query;
+	var field = args.field;
+	var criteria = args.data;
+	var localName = args.options;
+	var callback = args.callback;
 	var self = this;
 	var foreign = field.references;
 	var kvp = [];
@@ -75,7 +80,6 @@ ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 		}
 	}
 	var where = kvp.join(' AND ');
-	var localName = arguments[this.length];
 	var foreignName = mysql.escapeId(foreign.$table.$name) + '.' + mysql.escapeId(foreign.$name);
 	query('SELECT ?? FROM ?? WHERE ' + where + ' LIMIT 2', [foreign.$name, foreign.$table.$name],
 		function (err, res) {
@@ -96,7 +100,7 @@ ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 };
 
 // 
-//  lookupForeignIds([query], table, row, callback)
+//  lookupForeignIds([query] table row [cols] callback)
 //  ----------------
 // 
 // Looks up all foreign key values for a row
@@ -118,10 +122,13 @@ ORM.prototype.lookupForeignId = function (field, criteria, callback) {
 // 
 //     // value.country = 372, value.role = <some id value>
 // 
-ORM.prototype.lookupForeignIds = function (table, row, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-	var cols = shift(arguments) || this.listForeignKeys(table);
+ORM.prototype.lookupForeignIds = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var row = args.data;
+	var callback = args.callback;
+	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
 	var self = this;
 	async.each(cols,
 		function (col, callback) {
@@ -130,13 +137,13 @@ ORM.prototype.lookupForeignIds = function (table, row, callback) {
 			if (!_(value).isObject()) {
 				return callback(null);
 			}
-			self.lookupForeignId(query, field, value, function (err, res) {
+			self.lookupForeignId(query, field, value, localName, function (err, res) {
 				if (err) {
 					return callback(err);
 				}
 				row[col] = res;
 				callback(null);
-			}, localName);
+			});
 		},
 		function (err) {
 			callback(err, row);
@@ -147,12 +154,15 @@ ORM.prototype.lookupForeignIds = function (table, row, callback) {
 // ----------------
 // **TODO: Document**
 //
-ORM.prototype.lookupForeignRow = function (field, id, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	field = shift(arguments), id = shift(arguments), callback = shift(arguments);
+ORM.prototype.lookupForeignRow = function () {
+	var args = parse_args(this, arguments, true);
+	var query = args.query;
+	var field = args.field;
+	var id = args.data;
+	var callback = args.callback;
+	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
 	var self = this;
 	var foreign = field.references;
-	var localName = arguments[this.length];
 	var foreignName = mysql.escapeId(foreign.$table.$name) + '.' + mysql.escapeId(foreign.$name);
 	query('SELECT * FROM ?? WHERE ??=?', [foreign.$table.$name, foreign.$name, id],
 		function (err, res) {
@@ -178,10 +188,13 @@ ORM.prototype.lookupForeignRow = function (field, id, callback) {
  * **TODO**: Document lookupForeignRow[s], which operates in a very simular way,
  * but looks up entire rows from ID values instead of ID values from rows...
  */
-ORM.prototype.lookupForeignRows = function (table, row, callback) {
-	var query = (_(arguments[0]).isFunction() && arguments[0].name === 'query') ? shift(arguments) : this.query;
-	table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-	var cols = shift(arguments) || this.listForeignKeys(table);
+ORM.prototype.lookupForeignRows = function () {
+	var args = parse_args(this, arguments);
+	var query = args.query;
+	var table = args.table;
+	var row = args.data;
+	var callback = args.callback;
+	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
 	var self = this;
 	async.each(cols,
 		function (col, callback) {
@@ -190,13 +203,13 @@ ORM.prototype.lookupForeignRows = function (table, row, callback) {
 			if (!_(value).isNumber()) {
 				return callback(null);
 			}
-			self.lookupForeignRow(query, field, value, function (err, res) {
+			self.lookupForeignRow(query, field, value, localName, function (err, res) {
 				if (err) {
 					return callback(err);
 				}
 				row[col] = res;
 				callback(null);
-			}, localName);
+			});
 		},
 		function (err) {
 			callback(err, row);
