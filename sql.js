@@ -79,7 +79,8 @@ function tableName(table, callback) {
 		return callback(null, mysql.escapeId(table.$name));
 	}
 	else {
-		return callback(new Error('Unknown table specification: ' + table));
+		return callback(new Error('Unknown table specification: "' + table +
+			'"'));
 	}
 }
 
