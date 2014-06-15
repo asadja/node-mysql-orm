@@ -90,6 +90,12 @@ module.exports.parse_schema = parse_schema;
         }
         table.$primary = [fieldName];
       }
+      <span class="comment">/* JSON field */</span>
+      <span class="keyword">if</span> (field.type.toUpperCase() === <span class="string">'JSON'</span>) {
+        field.type = <span class="string">'LONGTEXT'</span>;
+        field.serialize = JSON.stringify;
+        field.deserialize = JSON.parse;
+      }
       <span class="comment">/* Auto-increment */</span>
       <span class="keyword">if</span> (field.auto_increment) {
         table.$auto_increment = fieldName;
@@ -187,7 +193,7 @@ module.exports.parse_schema = parse_schema;
   <span class="keyword">var</span> field = path.shift();
   <span class="keyword">if</span> (_(field).isUndefined()) {
     <span class="keyword">if</span> (orm.schema[table].$primary.length > <span class="number">1</span>) {
-      <span class="keyword">return</span> orm.error(err(<span class="string">'Target table "'</span> + table + <span class="string">'" has a '</span>
+      <span class="keyword">return</span> orm.error(err(<span class="string">'Target table "'</span> + table + <span class="string">'" has a '</span> +
         <span class="string">'composite primary key and no target field was explicitly '</span> +
         <span class="string">'specified in the relation definition'</span>));
     } <span class="keyword">else</span>

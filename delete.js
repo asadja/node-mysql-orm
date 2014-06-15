@@ -15,10 +15,11 @@ var mysql = require('mysql');
 var async = require('async');
 var _ = require('underscore');
 
-var utils = require('./utils');
-var names = utils.names;
-var shift = utils.shift;
 var sql = require('./sql');
+var utils = require('./utils');
+
+var names = utils.names;
+var parse_args = utils.parse_args;
 
 var ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -56,7 +57,7 @@ ORM.prototype.delete = function () {
 	var self = this;
 	async.parallel([
 			async.apply(sql.select, this, table.$primary),
-			async.apply(sql.from, this, table, criteria),
+			async.apply(sql.from, this, table),
 			async.apply(sql.where, this, query, table, criteria),
 			async.apply(sql.limit, this, { count: 2})
 		],
@@ -108,7 +109,7 @@ ORM.prototype.delete = function () {
 	var self = this;
 	async.parallel([
 			async.apply(sql.delete),
-			async.apply(sql.from, this, table, criteria),
+			async.apply(sql.from, this, table),
 			async.apply(sql.where, this, query, table, criteria)
 		],
 		function (err, sqlParts) {

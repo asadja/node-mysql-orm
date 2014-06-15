@@ -34,8 +34,9 @@
 <span class="keyword">var</span> async = require(<span class="string">'async'</span>);
 
 <span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
+
 <span class="keyword">var</span> names = utils.names;
-<span class="keyword">var</span> shift = utils.shift;
+<span class="keyword">var</span> parse_args = utils.parse_args;
 
 <span class="keyword">var</span> ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -68,7 +69,7 @@ ORM.prototype.listForeignKeys = <span class="function"><span class="keyword">fun
 </section>
 <section>
 <div class="lit-comment">
-<h2>lookupForeignId([query], field, criteria, callback)</h2>
+<h2>lookupForeignId([query] field criteria [localname] callback)</h2>
 
 <p>Looks up the id of the parent record, identified by search criteria. Returns<br />an error if no or if multiple parent records are found.  In such a case, the<br />second callback paremeter is zero or two for no or multiple records found.</p>
 
@@ -77,9 +78,13 @@ ORM.prototype.listForeignKeys = <span class="function"><span class="keyword">fun
 <p>lookupForeignKey(schema.users.country, { name: 'Estonia' },<br />function (err, value) { ... });</p>
 </div>
 <code class="lit-code">
-ORM.prototype.lookupForeignId = <span class="function"><span class="keyword">function</span> <span class="params">(field, criteria, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  field = shift(arguments), criteria = shift(arguments), callback = shift(arguments);
+ORM.prototype.lookupForeignId = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments, <span class="literal">true</span>);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> field = args.field;
+  <span class="keyword">var</span> criteria = args.data;
+  <span class="keyword">var</span> localName = args.options;
+  <span class="keyword">var</span> callback = args.callback;
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   <span class="keyword">var</span> foreign = field.references;
   <span class="keyword">var</span> kvp = [];
@@ -89,7 +94,6 @@ ORM.prototype.lookupForeignId = <span class="function"><span class="keyword">fun
     }
   }
   <span class="keyword">var</span> where = kvp.join(<span class="string">' AND '</span>);
-  <span class="keyword">var</span> localName = arguments[<span class="keyword">this</span>.length];
   <span class="keyword">var</span> foreignName = mysql.escapeId(foreign.$table.$name) + <span class="string">'.'</span> + mysql.escapeId(foreign.$name);
   query(<span class="string">'SELECT ?? FROM ?? WHERE '</span> + where + <span class="string">' LIMIT 2'</span>, [foreign.$name, foreign.$table.$name],
     <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
@@ -112,7 +116,7 @@ ORM.prototype.lookupForeignId = <span class="function"><span class="keyword">fun
 </section>
 <section>
 <div class="lit-comment">
-<h2>lookupForeignIds([query], table, row, callback)</h2>
+<h2>lookupForeignIds([query] table row [cols] callback)</h2>
 
 <p>Looks up all foreign key values for a row</p>
 
@@ -125,10 +129,13 @@ ORM.prototype.lookupForeignId = <span class="function"><span class="keyword">fun
 <p>// value.country = 372, value.role = &lt;some id value&gt;</p>
 </div>
 <code class="lit-code">
-ORM.prototype.lookupForeignIds = <span class="function"><span class="keyword">function</span> <span class="params">(table, row, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-  <span class="keyword">var</span> cols = shift(arguments) || <span class="keyword">this</span>.listForeignKeys(table);
+ORM.prototype.lookupForeignIds = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> row = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> cols = args.hasOptions ? args.options : <span class="keyword">this</span>.listForeignKeys(table);
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.each(cols,
     <span class="function"><span class="keyword">function</span> <span class="params">(col, callback)</span> {</span>
@@ -137,13 +144,13 @@ ORM.prototype.lookupForeignIds = <span class="function"><span class="keyword">fu
       <span class="keyword">if</span> (!_(value).isObject()) {
         <span class="keyword">return</span> callback(<span class="literal">null</span>);
       }
-      self.lookupForeignId(query, field, value, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+      self.lookupForeignId(query, field, value, localName, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
         <span class="keyword">if</span> (err) {
           <span class="keyword">return</span> callback(err);
         }
         row[col] = res;
         callback(<span class="literal">null</span>);
-      }, localName);
+      });
     },
     <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
       callback(err, row);
@@ -158,12 +165,15 @@ ORM.prototype.lookupForeignIds = <span class="function"><span class="keyword">fu
 <p><strong>TODO: Document</strong></p>
 </div>
 <code class="lit-code">
-ORM.prototype.lookupForeignRow = <span class="function"><span class="keyword">function</span> <span class="params">(field, id, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  field = shift(arguments), id = shift(arguments), callback = shift(arguments);
+ORM.prototype.lookupForeignRow = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments, <span class="literal">true</span>);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> field = args.field;
+  <span class="keyword">var</span> id = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> cols = args.hasOptions ? args.options : <span class="keyword">this</span>.listForeignKeys(table);
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   <span class="keyword">var</span> foreign = field.references;
-  <span class="keyword">var</span> localName = arguments[<span class="keyword">this</span>.length];
   <span class="keyword">var</span> foreignName = mysql.escapeId(foreign.$table.$name) + <span class="string">'.'</span> + mysql.escapeId(foreign.$name);
   query(<span class="string">'SELECT * FROM ?? WHERE ??=?'</span>, [foreign.$table.$name, foreign.$name, id],
     <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
@@ -189,10 +199,13 @@ ORM.prototype.lookupForeignRow = <span class="function"><span class="keyword">fu
  * **TODO**: Document lookupForeignRow[s], which operates in a very simular way,
  * but looks up entire rows from ID values instead of ID values from rows...
  */</span>
-ORM.prototype.lookupForeignRows = <span class="function"><span class="keyword">function</span> <span class="params">(table, row, callback)</span> {</span>
-  <span class="keyword">var</span> query = (_(arguments[<span class="number">0</span>]).isFunction() &amp;&amp; arguments[<span class="number">0</span>].name === <span class="string">'query'</span>) ? shift(arguments) : <span class="keyword">this</span>.query;
-  table = shift(arguments), row = shift(arguments), callback = shift(arguments);
-  <span class="keyword">var</span> cols = shift(arguments) || <span class="keyword">this</span>.listForeignKeys(table);
+ORM.prototype.lookupForeignRows = <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+  <span class="keyword">var</span> args = parse_args(<span class="keyword">this</span>, arguments);
+  <span class="keyword">var</span> query = args.query;
+  <span class="keyword">var</span> table = args.table;
+  <span class="keyword">var</span> row = args.data;
+  <span class="keyword">var</span> callback = args.callback;
+  <span class="keyword">var</span> cols = args.hasOptions ? args.options : <span class="keyword">this</span>.listForeignKeys(table);
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.each(cols,
     <span class="function"><span class="keyword">function</span> <span class="params">(col, callback)</span> {</span>
@@ -201,13 +214,13 @@ ORM.prototype.lookupForeignRows = <span class="function"><span class="keyword">f
       <span class="keyword">if</span> (!_(value).isNumber()) {
         <span class="keyword">return</span> callback(<span class="literal">null</span>);
       }
-      self.lookupForeignRow(query, field, value, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+      self.lookupForeignRow(query, field, value, localName, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
         <span class="keyword">if</span> (err) {
           <span class="keyword">return</span> callback(err);
         }
         row[col] = res;
         callback(<span class="literal">null</span>);
-      }, localName);
+      });
     },
     <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
       callback(err, row);

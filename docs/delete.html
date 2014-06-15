@@ -33,10 +33,11 @@
 <span class="keyword">var</span> async = require(<span class="string">'async'</span>);
 <span class="keyword">var</span> _ = require(<span class="string">'underscore'</span>);
 
-<span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
-<span class="keyword">var</span> names = utils.names;
-<span class="keyword">var</span> shift = utils.shift;
 <span class="keyword">var</span> sql = require(<span class="string">'./sql'</span>);
+<span class="keyword">var</span> utils = require(<span class="string">'./utils'</span>);
+
+<span class="keyword">var</span> names = utils.names;
+<span class="keyword">var</span> parse_args = utils.parse_args;
 
 <span class="keyword">var</span> ORM = { prototype: {} };
 module.exports = ORM.prototype;
@@ -77,7 +78,7 @@ ORM.prototype.<span class="keyword">delete</span> = <span class="function"><span
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.parallel([
       async.apply(sql.select, <span class="keyword">this</span>, table.$primary),
-      async.apply(sql.from, <span class="keyword">this</span>, table, criteria),
+      async.apply(sql.from, <span class="keyword">this</span>, table),
       async.apply(sql.where, <span class="keyword">this</span>, query, table, criteria),
       async.apply(sql.limit, <span class="keyword">this</span>, { count: <span class="number">2</span>})
     ],
@@ -132,7 +133,7 @@ ORM.prototype.<span class="keyword">delete</span> = <span class="function"><span
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   async.parallel([
       async.apply(sql.<span class="keyword">delete</span>),
-      async.apply(sql.from, <span class="keyword">this</span>, table, criteria),
+      async.apply(sql.from, <span class="keyword">this</span>, table),
       async.apply(sql.where, <span class="keyword">this</span>, query, table, criteria)
     ],
     <span class="function"><span class="keyword">function</span> <span class="params">(err, sqlParts)</span> {</span>

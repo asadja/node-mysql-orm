@@ -149,10 +149,15 @@ ORM.prototype.loadMany = function () {
 				if (!lookup) {
 					return callback(null, rows);
 				}
-				// TODO: Until joins are implemented, check to see whether we
-				// actually need to do a lookup before doing one...
 				async.each(rows,
 					function (row, callback) {
+						/* Deserialize */
+						names(table).forEach(function (key) {
+							if (table[key].deserialize) {
+								row[key] = table[key].deserialize(row[key]);
+							}
+						});
+						/* Lookup references */
 						self.lookupForeignRows(query, table, row, callback);
 					},
 					function (err) {

@@ -77,6 +77,12 @@ function parse_schema(orm) {
 				}
 				table.$primary = [fieldName];
 			}
+			/* JSON field */
+			if (field.type.toUpperCase() === 'JSON') {
+				field.type = 'LONGTEXT';
+				field.serialize = JSON.stringify;
+				field.deserialize = JSON.parse;
+			}
 			/* Auto-increment */
 			if (field.auto_increment) {
 				table.$auto_increment = fieldName;

@@ -75,59 +75,68 @@ module.exports.names = <span class="function"><span class="keyword">function</sp
 
 <p>Arguments parser for:</p>
 
-<p>function ([query, ] table, [criteria, [options, ]] callback)</p>
+<p>function ([query, ] table|field, [criteria, [options, ]] callback)</p>
 </div>
 <code class="lit-code">
-module.exports.parse_args = <span class="function"><span class="keyword">function</span> <span class="params">(orm, args)</span> {</span>
-  <span class="keyword">var</span> _table;
-  <span class="keyword">var</span> params = {
-    query: <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-      <span class="keyword">return</span> (_(args[<span class="number">0</span>]).isFunction() &amp;&amp; args[<span class="number">0</span>].name === <span class="string">'query'</span>) ?
-        args.shift() : orm.query;
-    },
-    table: <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+module.exports.parse_args = <span class="function"><span class="keyword">function</span> <span class="params">(orm, args, wantsField)</span> {</span>
+  args = [].slice.apply(args);
+  <span class="keyword">var</span> params = {};
+  params.query = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+    <span class="keyword">return</span> (_(args[<span class="number">0</span>]).isFunction() &amp;&amp; args[<span class="number">0</span>].name === <span class="string">'query'</span>) ?
+      args.shift() : orm.query;
+  })();
+  <span class="keyword">if</span> (wantsField) {
+    params.field = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+      <span class="keyword">return</span> args.shift();
+    })();
+  }
+  <span class="keyword">else</span> {
+    params.table = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
       <span class="keyword">var</span> table = args.shift();
       <span class="keyword">if</span> (_(table).isString()) {
-        <span class="keyword">return</span> _table = orm.schema[table];
+        <span class="keyword">return</span> orm.schema[table];
       }
-      <span class="keyword">else</span> <span class="keyword">if</span> (_(table).isObject() &amp;&amp; _(table).$type === <span class="string">'table'</span>) {
-        <span class="keyword">return</span> _table = orm.schema[table.$name];
+      <span class="keyword">else</span> <span class="keyword">if</span> (_(table).isObject() &amp;&amp; table.$type === <span class="string">'table'</span>) {
+        <span class="keyword">return</span> orm.schema[table.$name];
       }
       <span class="keyword">else</span> {
-        <span class="keyword">return</span> <span class="literal">null</span>;
+        <span class="keyword">return</span> table;
       }
-    },
-    data: <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-      <span class="keyword">if</span> (_(args[<span class="number">0</span>]).isFunction()) {
-        <span class="keyword">return</span> {};
-      }
-      <span class="keyword">var</span> data = args.shift();
-      <span class="keyword">if</span> (_(data).isNull() || _(data).isUndefined()) {
-        data = {};
-      }
-      <span class="keyword">if</span> (_(data).isString() || _(data).isNumber()) {
-        <span class="keyword">if</span> (table.$primary.length !== <span class="number">1</span>) {
-          <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Table "'</span> + _table.$name + <span class="string">'" '</span> +
-            <span class="string">'has no simple primary key, please specify a search '</span> +
-            <span class="string">'key explicitly'</span>));
-        }
-        data = _.object([table.$primary[<span class="number">0</span>]], [data]);
-      }
-    },
-    options: <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-      <span class="keyword">return</span> args.shift() || {};
-    },
-    callback: <span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
-      <span class="keyword">return</span> args.pop();
+    })();
+  }
+  params.callback = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+    <span class="keyword">var</span> callback = args.pop();
+    <span class="keyword">if</span> (!_(callback).isFunction()) {
+      <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">'Callback is not a function!'</span>);
     }
-  };
-  <span class="keyword">return</span> {
-    query: params.query(),
-    table: params.table(),
-    callback: params.callback(),
-    data: params.data(),
-    options: params.options()
-  };
+    <span class="keyword">return</span> callback;
+  })();
+  params.data = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+    <span class="keyword">var</span> data = args.shift();
+    <span class="keyword">if</span> (_(data).isNull() || _(data).isUndefined()) {
+      <span class="keyword">return</span> {};
+    }
+    <span class="keyword">if</span> (wantsField) {
+      <span class="keyword">return</span> data;
+    }
+    <span class="keyword">if</span> (_(data).isString() || _(data).isNumber()) {
+      <span class="keyword">if</span> (params.table.$primary.length !== <span class="number">1</span>) {
+        <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Table "'</span> + params.table.$name +
+          <span class="string">'" has no simple primary key, please specify a search '</span> +
+          <span class="string">'key explicitly'</span>));
+      }
+      <span class="keyword">return</span> _.object([params.table.$primary[<span class="number">0</span>]], [data]);
+    }
+    <span class="keyword">return</span> data;
+  })();
+  <span class="keyword">var</span> hasOptions;
+  params.options = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
+    <span class="keyword">var</span> options = args.shift();
+    hasOptions = !!options &amp;&amp; options != {};
+    <span class="keyword">return</span> options || {};
+  })();
+  params.hasOptions = hasOptions;
+  <span class="keyword">return</span> params;
 };
 </code>
 </section>

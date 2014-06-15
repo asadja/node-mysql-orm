@@ -86,6 +86,13 @@ ORM.prototype.save = function () {
 	var self = this;
 	async.waterfall([
 			function (callback) {
+				/* Serialize */
+				_(table).keys().forEach(function (key) {
+					if (table[key].serialize) {
+						row[key] = table[key].serialize(row[key]);
+					}
+				});
+				/* Lookup reference IDs */
 				self.lookupForeignIds(query, table, row, function (err, res) {
 						row = res;
 						callback(err);
@@ -98,7 +105,7 @@ ORM.prototype.save = function () {
 							async.apply(sql.insertInto, self, table),
 							async.apply(sql.set, self, names(row), row),
 							async.apply(sql.onDuplicateKeyUpdate, self,
-								_(names(row)).without(['id']))
+								_(names(row)).without(table.$primary))
 						],
 						function (err, data) {
 							if (err) {
@@ -124,11 +131,10 @@ ORM.prototype.save = function () {
 						return callback(new Error('Cannot save to existing ' +
 							'row: table has no primary key'));
 					}
-					var criteria = _.object(table.$primary,
-						_(row).pick(table.$primary));
+					var criteria = _(row).pick(table.$primary);
 					async.parallel([
 							async.apply(sql.update, self, table),
-							async.apply(sql.set, self, _(names(row)).without('id'), row),
+							async.apply(sql.set, self, _(names(row)).without(table.$primary), row),
 							async.apply(sql.where, self, query, table, criteria)
 						],
 						function (err, data) {

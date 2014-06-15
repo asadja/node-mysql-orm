@@ -54,7 +54,7 @@ module.exports.initialize = function (debug, callback) {
 			$sort: '-date',
 			user: { type: 'user', onDelete: 'cascade', onUpdate: 'cascade' },
 			title: { type: 'string', index: true },
-			content: { type: 'text' },
+			content: { type: 'json' },
 			date: { type: 'timestamp' },
 			deleted: { type: 'boolean' }
 		},
@@ -87,7 +87,8 @@ module.exports.initialize = function (debug, callback) {
 		],
 
 		posts: [
-			{ user: { username: 'mark' }, title: 'Test post', content: 'This is a test post', deleted: false }
+			{ user: { username: 'marili' }, title: 'Test post', content: {"main":"This is a test post","format":"plain"}, deleted: false },
+			{ user: { username: 'mark' }, title: 'Test post', content: {"main":"This is a test post","format":"plain"}, deleted: false }
 		]
 
 	};

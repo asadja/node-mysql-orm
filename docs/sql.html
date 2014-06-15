@@ -95,7 +95,7 @@ module.exports.<span class="keyword">delete</span> = <span class="function"><spa
   <span class="keyword">if</span> (_(table).isString()) {
     <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.escapeId(table));
   }
-  <span class="keyword">else</span> <span class="keyword">if</span> (_(table).$type === <span class="string">'table'</span>) {
+  <span class="keyword">else</span> <span class="keyword">if</span> (table.$type === <span class="string">'table'</span>) {
     <span class="keyword">return</span> callback(<span class="literal">null</span>, mysql.escapeId(table.$name));
   }
   <span class="keyword">else</span> {
@@ -166,10 +166,10 @@ module.exports.from = <span class="function"><span class="keyword">function</spa
  are used to<br />generate search constraints.  Foreign row IDs are looked up where necessary<br />to generate these constraints.</p>
 </div>
 <code class="lit-code">
-module.exports.where = <span class="function"><span class="keyword">function</span> <span class="params">(self, table, criteria, callback)</span> {</span>
+module.exports.where = <span class="function"><span class="keyword">function</span> <span class="params">(self, query, table, criteria, callback)</span> {</span>
   <span class="keyword">var</span> cols = names(criteria);
   <span class="keyword">if</span> (cols.length) {
-    self.lookupForeignIds(query, table, criteria, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+    self.lookupForeignIds(query, table, criteria, cols, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
       <span class="keyword">if</span> (err) {
         <span class="keyword">return</span> callback(err);
       }
@@ -179,7 +179,7 @@ module.exports.where = <span class="function"><span class="keyword">function</sp
             <span class="keyword">return</span> mysql.format(<span class="string">'??=?'</span>, [col, res[cols]]);
           })
           .join(<span class="string">',\n\t'</span>));
-    }, cols);
+    });
   }
   <span class="keyword">else</span> {
     <span class="keyword">return</span> callback(<span class="literal">null</span>);

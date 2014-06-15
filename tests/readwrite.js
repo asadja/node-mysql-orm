@@ -88,7 +88,7 @@ module.exports = function (orm ,callback) {
 			}
 
 			orm.test('Replacing country "United Kingdom" with "Scottish Federation"');
-			orm.save(orm.schema.countries, { id:44, name:'Scottish Federation' }, { save: 'existing' }, callback);
+			orm.save(orm.schema.countries, { id: 44, name: 'Scottish Federation' }, { save: 'existing' }, callback);
 		},
 		function (callback) {
 			orm.load(orm.schema.users, 1, callback);
@@ -147,6 +147,36 @@ module.exports = function (orm ,callback) {
 				console.log(user.username + ' (' + user.country.name + ')');
 			});
 			console.log('');
+			callback(null);
+		},
+		function (callback) {
+			orm.test('Serialized fields (JSON)');
+			orm.loadMany(orm.schema.posts, null, callback);
+		},
+		function (posts, callback) {
+			orm.test('Posts');
+			posts.forEach(function (post) {
+				console.log('"' + post.title + '" by ' + post.user.username + ':');
+				if (typeof post.content === 'string') {
+					return callback(new Error('JSON has not been deserialized'));
+				}
+				console.log(post.content);
+				console.log('');
+			});
+			orm.test('Adding "seo" field to all posts and saving');
+			posts.forEach(function (post) { post.content.seo = 'SEO stuff'; });
+			orm.saveMany(orm.schema.posts, posts, callback);
+		},
+		function (callback) {
+			orm.loadMany(orm.schema.posts, null, callback);
+		},
+		function (posts, callback) {
+			orm.test('Posts');
+			posts.forEach(function (post) {
+				console.log('"' + post.title + '" by ' + post.user.username + ':');
+				console.log(post.content);
+				console.log('');
+			});
 			callback(null);
 		}
 		],

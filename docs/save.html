@@ -84,23 +84,28 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
   <span class="keyword">var</span> options = args.options;
   <span class="keyword">var</span> callback = args.callback;
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
-  <span class="keyword">var</span> lookup = options.lookup || <span class="keyword">this</span>.listForeignKeys(table);
   async.waterfall([
       <span class="function"><span class="keyword">function</span> <span class="params">(callback)</span> {</span>
+        <span class="comment">/* Serialize */</span>
+        _(table).keys().forEach(<span class="function"><span class="keyword">function</span> <span class="params">(key)</span> {</span>
+          <span class="keyword">if</span> (table[key].serialize) {
+            row[key] = table[key].serialize(row[key]);
+          }
+        });
+        <span class="comment">/* Lookup reference IDs */</span>
         self.lookupForeignIds(query, table, row, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
             row = res;
             callback(err);
-          }, cols);
+          });
       },
       <span class="function"><span class="keyword">function</span> <span class="params">(callback)</span> {</span>
         <span class="keyword">var</span> saveMode = options.save || <span class="string">'always'</span>;
-        <span class="keyword">delete</span> row.$saveMode;
         <span class="keyword">if</span> (saveMode === <span class="string">'always'</span>) {
           async.parallel([
               async.apply(sql.insertInto, self, table),
               async.apply(sql.set, self, names(row), row),
               async.apply(sql.onDuplicateKeyUpdate, self,
-                _(names(row)).without([<span class="string">'id'</span>]))
+                _(names(row)).without(table.$primary))
             ],
             <span class="function"><span class="keyword">function</span> <span class="params">(err, data)</span> {</span>
               <span class="keyword">if</span> (err) {
@@ -126,12 +131,11 @@ ORM.prototype.save = <span class="function"><span class="keyword">function</span
             <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Cannot save to existing '</span> +
               <span class="string">'row: table has no primary key'</span>));
           }
-          <span class="keyword">var</span> criteria = _.object(table.$primary,
-            _(row).pick(table.$primary));
+          <span class="keyword">var</span> criteria = _(row).pick(table.$primary);
           async.parallel([
               async.apply(sql.update, self, table),
-              async.apply(sql.set, self, _(names(row)).without(<span class="string">'id'</span>), row),
-              async.apply(sql.where, self, table, criteria)
+              async.apply(sql.set, self, _(names(row)).without(table.$primary), row),
+              async.apply(sql.where, self, query, table, criteria)
             ],
             <span class="function"><span class="keyword">function</span> <span class="params">(err, data)</span> {</span>
               <span class="keyword">if</span> (err) {
@@ -228,7 +232,9 @@ ORM.prototype.saveMultipleTables = <span class="function"><span class="keyword">
         <span class="function"><span class="keyword">function</span> <span class="params">(callback)</span> {</span>
           async.eachSeries(names(data),
             <span class="function"><span class="keyword">function</span> <span class="params">(tableName, callback)</span> {</span>
-              self.saveMany(transaction.query, self.schema[tableName], data[tableName], callback);
+              <span class="keyword">if</span> (data[tableName]) {
+                self.saveMany(transaction.query, tableName, data[tableName], callback);
+              }
             },
             callback);
         },

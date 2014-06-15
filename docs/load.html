@@ -146,15 +146,15 @@ ORM.prototype.loadMany = <span class="function"><span class="keyword">function</
         <span class="keyword">if</span> (!lookup) {
           <span class="keyword">return</span> callback(<span class="literal">null</span>, rows);
         }
-</code>
-</section>
-<section>
-<div class="lit-comment">
-<p>TODO: Until joins are implemented, check to see whether we<br />actually need to do a lookup before doing one...</p>
-</div>
-<code class="lit-code">
         async.each(rows,
           <span class="function"><span class="keyword">function</span> <span class="params">(row, callback)</span> {</span>
+            <span class="comment">/* Deserialize */</span>
+            names(table).forEach(<span class="function"><span class="keyword">function</span> <span class="params">(key)</span> {</span>
+              <span class="keyword">if</span> (table[key].deserialize) {
+                row[key] = table[key].deserialize(row[key]);
+              }
+            });
+            <span class="comment">/* Lookup references */</span>
             self.lookupForeignRows(query, table, row, callback);
           },
           <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
