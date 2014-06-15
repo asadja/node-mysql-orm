@@ -191,7 +191,7 @@ module.exports.orderby = function (self, table, criteria, callback) {
 				return mysql.escapeId(field.substr(1)) + ' ASC';
 			}
 			else {
-				return mysql.escapeId(orderby);
+				return mysql.escapeId(field);
 			}
 		}).join(',\n\t'));
 	}
