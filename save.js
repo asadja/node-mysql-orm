@@ -80,10 +80,11 @@ ORM.prototype.save = function () {
 	var args = parse_args(this, arguments);
 	var query = args.query;
 	var table = args.table;
-	var row = args.data;
+	var originalRow = args.data;
 	var options = args.options;
 	var callback = args.callback;
 	var self = this;
+	var row = _(originalRow).clone();
 	async.waterfall([
 			function (callback) {
 				/* Serialize */
@@ -158,7 +159,7 @@ ORM.prototype.save = function () {
 								'with mode ' + saveMode));
 						}
 						if (_(res).has('insertId')) {
-							row[table.$auto_increment] = res.insertId;
+							originalRow[table.$auto_increment] = res.insertId;
 						}
 						callback(err);
 					});

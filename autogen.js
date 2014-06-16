@@ -119,12 +119,16 @@ function column_definition(orm, field) {
 	lines = lines
 		.map(function (ar) { return mysql.format.apply(mysql, ar); })
 		.map(indent);
+	var def = field.default;
+	if (_(field).has('default') && field.serialize) {
+		def = field.serialize(def);
+	}
 	lines.unshift(_([
 		mysql.escapeId(field.$name),
 		field.type,
 		field.auto_increment && 'AUTO_INCREMENT',
 		!field.nullable && 'NOT NULL',
-		field.default && ('DEFAULT ' + mysql.escape(field.default))
+		field.default && ('DEFAULT ' + mysql.escape(def))
 	]).compact().join(' '));
 	return lines.join(',\n');
 };

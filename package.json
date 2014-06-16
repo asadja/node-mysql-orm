@@ -1,6 +1,6 @@
 {
 	"name": "mysql-orm",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"description": "ORM frontend for MySQL, uses JSON schema to define tables and relationships.  This supports automatic table re-generation with indexes, default values, foreign keys, reference options, query logging and more.",
 	"main": "index.js",
 	"scripts": {

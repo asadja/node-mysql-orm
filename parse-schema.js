@@ -78,10 +78,15 @@ function parse_schema(orm) {
 				table.$primary = [fieldName];
 			}
 			/* JSON field */
-			if (field.type.toUpperCase() === 'JSON') {
-				field.type = 'LONGTEXT';
-				field.serialize = JSON.stringify;
-				field.deserialize = JSON.parse;
+			var match = field.type.match(/^JSON(?:\(\s*(\d+)\s*\))?$/i);
+			if (match) {
+				field.type = match[1] ? 'VARCHAR(' + match[1] + ')' : 'LONGTEXT';
+				field.serialize = function (o) {
+					return JSON.stringify(_(o).isUndefined() ? this.default : o);
+				};
+				field.deserialize = function (s) {
+					return (s === null || s === '') ? this.default : JSON.parse(s);
+				};
 			}
 			/* Auto-increment */
 			if (field.auto_increment) {
