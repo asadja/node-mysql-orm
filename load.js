@@ -158,7 +158,8 @@ ORM.prototype.loadMany = function () {
 							}
 						});
 						/* Lookup references */
-						self.lookupForeignRows(query, table, row, callback);
+						self.lookupForeignValues(query, table, row, options,
+							callback);
 					},
 					function (err) {
 						if (err) {

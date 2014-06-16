@@ -61,14 +61,15 @@ module.exports.parse_args = function (orm, args, wantsField) {
 	else {
 		params.table = (function () {
 			var table = args.shift();
-			if (_(table).isString()) {
+			if (_(table).isString() && _(orm.schema).has(table)) {
 				return orm.schema[table];
 			}
-			else if (_(table).isObject() && table.$type === 'table') {
-				return orm.schema[table.$name];
+			else if (_(table).isObject() && table.$type === 'table' && table.$schema === orm.schema) {
+				return table;
 			}
 			else {
-				return table;
+				throw new Error('Cannot resolve table: ' + JSON.stringify(table));
+				//return table;
 			}
 		})();
 	}
@@ -81,11 +82,11 @@ module.exports.parse_args = function (orm, args, wantsField) {
 	})();
 	params.data = (function () {
 		var data = args.shift();
-		if (_(data).isNull() || _(data).isUndefined()) {
-			return {};
-		}
 		if (wantsField) {
 			return data;
+		}
+		if (_(data).isNull() || _(data).isUndefined()) {
+			return {};
 		}
 		if (_(data).isString() || _(data).isNumber()) {
 			if (params.table.$primary.length !== 1) {

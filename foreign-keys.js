@@ -52,7 +52,7 @@ ORM.prototype.listForeignKeys = function (table) {
 };
 
 // 
-// lookupForeignId([query] field criteria [localname] callback)
+// lookupForeignId([query] field criteria [options] callback)
 // ---------------
 // 
 // Looks up the id of the parent record, identified by search criteria. Returns
@@ -69,38 +69,35 @@ ORM.prototype.lookupForeignId = function () {
 	var query = args.query;
 	var field = args.field;
 	var criteria = args.data;
-	var localName = args.options;
+	var options = args.options;
 	var callback = args.callback;
 	var self = this;
 	var foreign = field.references;
-	var kvp = [];
-	for (var key in criteria) {
-		if (_(criteria).has(key)) {
-			kvp.push(mysql.escapeId(key) + '=' + mysql.escape(criteria[key]));
-		}
-	}
-	var where = kvp.join(' AND ');
-	var foreignName = mysql.escapeId(foreign.$table.$name) + '.' + mysql.escapeId(foreign.$name);
-	query('SELECT ?? FROM ?? WHERE ' + where + ' LIMIT 2', [foreign.$name, foreign.$table.$name],
-		function (err, res) {
-			if (err) {
-				self.warn('Error occurred while looking up foreign id');
-				return callback(err);
-			}
-			if (res.length !== 1) {
-				return callback(new Error(self.warn(
-							(res.length > 1 ? 'Multiple' : 'No') +
-							' foreign ids (' + foreignName + ') found' +
-							(_(localName).isString() ? ' for ' + localName : '') +
-							' with criteria ' + JSON.stringify(criteria))),
-							res.length);
-			}
-			callback(null, res[0][foreign.$name]);
+	async.parallel([
+			async.apply(sql.select, this, [foreign.$name]),
+			async.apply(sql.from, this, foreign.$table),
+			async.apply(sql.where, this, query, foreign.$table, criteria),
+			async.apply(sql.limit, this, { count: 2 })
+		],
+		function (err, sqlParts) {
+			query(_(sqlParts).compact().join('\n'), null, function (err, rows) {
+				if (err) {
+					self.warn('Error occurred while looking up foreign id');
+					return callback(err);
+				}
+				if (res.length !== 1) {
+					return callback(new Error(self.warn(
+								(res.length > 1 ? 'Multiple' : 'No') +
+								' foreign ids found')),
+								res.length);
+				}
+				callback(null, res[0][foreign.$name]);
+			});
 		});
 };
 
 // 
-//  lookupForeignIds([query] table row [cols] callback)
+//  lookupForeignIds([query] table row [options] callback)
 //  ----------------
 // 
 // Looks up all foreign key values for a row
@@ -128,16 +125,18 @@ ORM.prototype.lookupForeignIds = function () {
 	var table = args.table;
 	var row = args.data;
 	var callback = args.callback;
-	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
+	var options = args.options;
 	var self = this;
+	var cols = options.cols || this.listForeignKeys(table);
 	async.each(cols,
 		function (col, callback) {
-			var field = table[col], value = row[col], foreign = field.references;
-			var localName = mysql.escapeId(table.$name) + '.' + mysql.escapeId(col);
+			var field = table[col];
+			var value = row[col];
+			var foreign = field.references;
 			if (!_(value).isObject()) {
 				return callback(null);
 			}
-			self.lookupForeignId(query, field, value, localName, function (err, res) {
+			self.lookupForeignId(query, field, value, function (err, res) {
 				if (err) {
 					return callback(err);
 				}
@@ -150,60 +149,51 @@ ORM.prototype.lookupForeignIds = function () {
 		});
 };
 
-// lookupForeignRow
+// lookupForeignValue([query] field id [options] callback)
 // ----------------
-// **TODO: Document**
+// Get the data corresponding to a given ID value in a foreign key ralationship
 //
-ORM.prototype.lookupForeignRow = function () {
+ORM.prototype.lookupForeignValue = function () {
 	var args = parse_args(this, arguments, true);
 	var query = args.query;
 	var field = args.field;
 	var id = args.data;
 	var callback = args.callback;
-	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
+	var options = args.options;
 	var self = this;
 	var foreign = field.references;
-	var foreignName = mysql.escapeId(foreign.$table.$name) + '.' + mysql.escapeId(foreign.$name);
-	query('SELECT * FROM ?? WHERE ??=?', [foreign.$table.$name, foreign.$name, id],
-		function (err, res) {
-			if (err) {
-				self.warn('Error occurred while looking up foreign row');
-				return callback(err);
-			}
-			if (res.length !== 1) {
-				return callback(new Error(self.warn(
-							(res.length > 1 ? 'Multiple' : 'No') +
-							' foreign rows (' + foreignName + ') found' +
-							(_(localName).isString() ? ' for ' + localName : '') +
-							' with criteria ' + JSON.stringify(criteria))));
-			}
-			callback(null, res[0]);
-		});
+	var criteria = _.object([foreign.$name], [id]);
+	this.load(query, foreign.$table, criteria, options, function (err, res) {
+		if (err) {
+			self.warn('Error occurred while looking up foreign row');
+			return callback(err);
+		}
+		callback(null, res);
+	});
 };
 
-/*
- * lookupForeignRow(table, row, callback)
- * ----------------
- *
- * **TODO**: Document lookupForeignRow[s], which operates in a very simular way,
- * but looks up entire rows from ID values instead of ID values from rows...
- */
-ORM.prototype.lookupForeignRows = function () {
+//
+// lookupForeignValues([query] table row [options] callback)
+// ----------------
+// Uses lookupForeignValue to get data for fields which have foreign key
+// relationships
+//
+ORM.prototype.lookupForeignValues = function () {
 	var args = parse_args(this, arguments);
 	var query = args.query;
 	var table = args.table;
 	var row = args.data;
 	var callback = args.callback;
-	var cols = args.hasOptions ? args.options : this.listForeignKeys(table);
+	var options = args.options;
+	var cols = options.cols || this.listForeignKeys(table);
 	var self = this;
 	async.each(cols,
 		function (col, callback) {
-			var field = table[col], value = row[col], foreign = field.references;
-			var localName = mysql.escapeId(table.$name) + '.' + mysql.escapeId(col);
-			if (!_(value).isNumber()) {
+			var field = table[col], id = row[col], foreign = field.references;
+			if (_(id).isNull() || _(id).isObject()) {
 				return callback(null);
 			}
-			self.lookupForeignRow(query, field, value, localName, function (err, res) {
+			self.lookupForeignValue(query, field, id, options, function (err, res) {
 				if (err) {
 					return callback(err);
 				}

@@ -54,17 +54,18 @@ ORM.prototype.loggedQuery = function (connection) {
 		var log = function (left, value) {
 			self.info(qidstr + left + (value.indexOf('\n') === -1 ? value : '\n' + indent(value).replace(/\t/g, '    ')));
 		};
+		var sql = mysql.format(query_format, params);
 		if (!_(query_format).isString() || params) {
 			log('query  = ', (_(query_format).isString() ? query_format : JSON.stringify(query_format)));
 			log('params = ', JSON.stringify(params));
-			log('sql    = ', mysql.format(query_format, params));
+			log('sql    = ', sql);
 		}
 		else {
-			log('sql = ', mysql.format(query_format, params));
+			log('sql = ', sql);
 		}
-		connection.query(query_format, params, function (err) {
+		connection.query(sql, function (err) {
 			if (err) {
-				self[self.ready ? 'warn' : 'error'](qidstr + 'error = ' + JSON.stringify(err));
+				self[self.ready ? 'warn' : 'error'](qidstr + 'error = ' + JSON.stringify(err) + '; sql=\n' + indent(sql));
 			}
 			callback.apply(null, arguments);
 		});

@@ -138,12 +138,22 @@ module.exports.from = function (self, table, callback) {
 // to generate these constraints.
 // 
 module.exports.where = function (self, query, table, criteria, callback) {
+	criteria = _(criteria).clone();
 	var cols = names(criteria);
 	if (cols.length) {
-		self.lookupForeignIds(query, table, criteria, cols, function (err, res) {
+		if (_(table).isString()) {
+			table = self.schema[table];
+		}
+		self.lookupForeignIds(query, table, criteria, { cols: cols }, function (err, res) {
 			if (err) {
 				return callback(err);
 			}
+			cols.forEach(function (fieldName) {
+				var field = table[fieldName];
+				if (field.serialize) {
+					criteria[fieldName] = field.serialize(criteria[fieldName]);
+				}
+			});
 			return callback(null,
 				'WHERE\n\t' + cols
 					.map(function (col) {
