@@ -31,12 +31,12 @@ module.exports.indent = function (str) {
 // names
 // -----
 // Get a list of object names within the given object.  Returns all field names
-// that don't begin with `$`.
+// that don't begin with `$` and that aren't functions.
 //
 module.exports.names = function (obj) {
 	return _(obj).keys().filter(
 		function (key) {
-			return key.charAt(0) !== '$';
+			return key.charAt(0) !== '$' && !_(obj[key]).isFunction();
 		});
 };
 

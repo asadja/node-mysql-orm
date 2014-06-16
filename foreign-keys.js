@@ -92,7 +92,8 @@ ORM.prototype.lookupForeignId = function () {
 								' foreign ids found')),
 								rows.length);
 				}
-				callback(null, rows[0][foreign.$name]);
+				var row = rows[0];
+				callback(null, row[foreign.$name]);
 			});
 		});
 };
