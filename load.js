@@ -41,6 +41,9 @@ module.exports = ORM.prototype;
 //  + id - Row ID (primary key value)
 //  + criteria - Object containing search criteria
 //  + callback - (err, row)
+//
+// If now row is found, then an error is returned and row === false.  For other
+// errors, row is undefined.
 // 
 // Same usage as loadMany but obviously the LIMIT specifiers are not used.
 // 
@@ -56,12 +59,12 @@ ORM.prototype.load = function () {
 			return callback(err);
 		}
 		if (res.length === 0) {
-			return callback(new Error('Item not found'), false);
+			return callback(new Error('Item not found'), null);
 		}
 		else if (res.length > 1) {
 			return callback(new Error('Multiple rows were returned for GET ' +
 				'operation on table '+table.$name+' with criteria ' +
-				JSON.stringify(criteria)), true);
+				JSON.stringify(criteria)));
 		}
 		callback(null, res[0]);
 	});
