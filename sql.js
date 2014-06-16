@@ -133,37 +133,50 @@ module.exports.from = function (self, table, callback) {
 // WHERE <criteria>
 // -----
 // 
-// Properties of criteria with names that don't begin with '$' are used to
-// generate search constraints.  Foreign row IDs are looked up where necessary
-// to generate these constraints.
+// Properties of criteria are used to generate search constraints.  Foreign row
+// IDs are looked up where necessary to generate these constraints.
 // 
 module.exports.where = function (self, query, table, criteria, callback) {
+	var cols = _(criteria).keys();
 	criteria = _(criteria).clone();
-	var cols = names(criteria);
+	if (table.$primary.length === 1 && _(criteria).has(table.$primary)) {
+		var primary = table.$primary[0];
+		criteria = _.object([primary], [criteria[primary]]);
+		cols = [primary]
+	}
 	if (cols.length) {
 		if (_(table).isString()) {
 			table = self.schema[table];
 		}
-		self.lookupForeignIds(query, table, criteria, { cols: cols }, function (err, res) {
-			if (err) {
-				return callback(err);
-			}
-			cols.forEach(function (fieldName) {
-				var field = table[fieldName];
-				if (field.serialize) {
-					criteria[fieldName] = field.serialize(criteria[fieldName]);
+		var refs = self.listForeignKeys(table);
+		if (refs.length) {
+			self.lookupForeignIds(query, table, criteria, { cols: cols }, function (err, res) {
+				if (err) {
+					return callback(err);
 				}
+				generateClause(res);
 			});
-			return callback(null,
-				'WHERE\n\t' + cols
-					.map(function (col) {
-						return mysql.format('??=?', [col, res[cols]]);
-					})
-					.join(',\n\t'));
-		});
+		}
+		else {
+			generateClause(criteria);
+		}
 	}
 	else {
 		return callback(null);
+	}
+	function generateClause(row) {
+		cols.forEach(function (fieldName) {
+			var field = table[fieldName];
+			if (field.serialize) {
+				row[fieldName] = field.serialize(row[fieldName]);
+			}
+		});
+		return callback(null,
+			'WHERE\n\t' + cols
+				.map(function (col) {
+					return mysql.format('??=?', [col, row[col]]);
+				})
+				.join(' AND\n\t'));
 	}
 };
 
