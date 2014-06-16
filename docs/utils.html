@@ -93,14 +93,21 @@ module.exports.parse_args = <span class="function"><span class="keyword">functio
   <span class="keyword">else</span> {
     params.table = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
       <span class="keyword">var</span> table = args.shift();
-      <span class="keyword">if</span> (_(table).isString()) {
+      <span class="keyword">if</span> (_(table).isString() &amp;&amp; _(orm.schema).has(table)) {
         <span class="keyword">return</span> orm.schema[table];
       }
-      <span class="keyword">else</span> <span class="keyword">if</span> (_(table).isObject() &amp;&amp; table.$type === <span class="string">'table'</span>) {
-        <span class="keyword">return</span> orm.schema[table.$name];
+      <span class="keyword">else</span> <span class="keyword">if</span> (_(table).isObject() &amp;&amp; table.$type === <span class="string">'table'</span> &amp;&amp; table.$schema === orm.schema) {
+        <span class="keyword">return</span> table;
       }
       <span class="keyword">else</span> {
-        <span class="keyword">return</span> table;
+        <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">'Cannot resolve table: '</span> + JSON.stringify(table));
+</code>
+</section>
+<section>
+<div class="lit-comment">
+<p>return table;</p>
+</div>
+<code class="lit-code">
       }
     })();
   }
@@ -113,11 +120,11 @@ module.exports.parse_args = <span class="function"><span class="keyword">functio
   })();
   params.data = (<span class="function"><span class="keyword">function</span> <span class="params">()</span> {</span>
     <span class="keyword">var</span> data = args.shift();
-    <span class="keyword">if</span> (_(data).isNull() || _(data).isUndefined()) {
-      <span class="keyword">return</span> {};
-    }
     <span class="keyword">if</span> (wantsField) {
       <span class="keyword">return</span> data;
+    }
+    <span class="keyword">if</span> (_(data).isNull() || _(data).isUndefined()) {
+      <span class="keyword">return</span> {};
     }
     <span class="keyword">if</span> (_(data).isString() || _(data).isNumber()) {
       <span class="keyword">if</span> (params.table.$primary.length !== <span class="number">1</span>) {

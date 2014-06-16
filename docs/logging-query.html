@@ -72,17 +72,18 @@ ORM.prototype.loggedQuery = <span class="function"><span class="keyword">functio
     <span class="keyword">var</span> log = <span class="function"><span class="keyword">function</span> <span class="params">(left, value)</span> {</span>
       self.info(qidstr + left + (value.indexOf(<span class="string">'\n'</span>) === -<span class="number">1</span> ? value : <span class="string">'\n'</span> + indent(value).replace(<span class="regexp">/\t/g</span>, <span class="string">'    '</span>)));
     };
+    <span class="keyword">var</span> sql = mysql.format(query_format, params);
     <span class="keyword">if</span> (!_(query_format).isString() || params) {
       log(<span class="string">'query  = '</span>, (_(query_format).isString() ? query_format : JSON.stringify(query_format)));
       log(<span class="string">'params = '</span>, JSON.stringify(params));
-      log(<span class="string">'sql    = '</span>, mysql.format(query_format, params));
+      log(<span class="string">'sql    = '</span>, sql);
     }
     <span class="keyword">else</span> {
-      log(<span class="string">'sql = '</span>, mysql.format(query_format, params));
+      log(<span class="string">'sql = '</span>, sql);
     }
-    connection.query(query_format, params, <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
+    connection.query(sql, <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
       <span class="keyword">if</span> (err) {
-        self[self.ready ? <span class="string">'warn'</span> : <span class="string">'error'</span>](qidstr + <span class="string">'error = '</span> + JSON.stringify(err));
+        self[self.ready ? <span class="string">'warn'</span> : <span class="string">'error'</span>](qidstr + <span class="string">'error = '</span> + JSON.stringify(err) + <span class="string">'; sql=\n'</span> + indent(sql));
       }
       callback.apply(<span class="literal">null</span>, arguments);
     });

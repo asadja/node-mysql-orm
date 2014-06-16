@@ -167,12 +167,22 @@ module.exports.from = <span class="function"><span class="keyword">function</spa
 </div>
 <code class="lit-code">
 module.exports.where = <span class="function"><span class="keyword">function</span> <span class="params">(self, query, table, criteria, callback)</span> {</span>
+  criteria = _(criteria).clone();
   <span class="keyword">var</span> cols = names(criteria);
   <span class="keyword">if</span> (cols.length) {
-    self.lookupForeignIds(query, table, criteria, cols, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
+    <span class="keyword">if</span> (_(table).isString()) {
+      table = self.schema[table];
+    }
+    self.lookupForeignIds(query, table, criteria, { cols: cols }, <span class="function"><span class="keyword">function</span> <span class="params">(err, res)</span> {</span>
       <span class="keyword">if</span> (err) {
         <span class="keyword">return</span> callback(err);
       }
+      cols.forEach(<span class="function"><span class="keyword">function</span> <span class="params">(fieldName)</span> {</span>
+        <span class="keyword">var</span> field = table[fieldName];
+        <span class="keyword">if</span> (field.serialize) {
+          criteria[fieldName] = field.serialize(criteria[fieldName]);
+        }
+      });
       <span class="keyword">return</span> callback(<span class="literal">null</span>,
         <span class="string">'WHERE\n\t'</span> + cols
           .map(<span class="function"><span class="keyword">function</span> <span class="params">(col)</span> {</span>

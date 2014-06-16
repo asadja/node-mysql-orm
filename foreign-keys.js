@@ -16,6 +16,7 @@ var _ = require('underscore');
 var async = require('async');
 
 var utils = require('./utils');
+var sql = require('./sql');
 
 var names = utils.names;
 var parse_args = utils.parse_args;
@@ -85,13 +86,13 @@ ORM.prototype.lookupForeignId = function () {
 					self.warn('Error occurred while looking up foreign id');
 					return callback(err);
 				}
-				if (res.length !== 1) {
+				if (rows.length !== 1) {
 					return callback(new Error(self.warn(
-								(res.length > 1 ? 'Multiple' : 'No') +
+								(rows.length > 1 ? 'Multiple' : 'No') +
 								' foreign ids found')),
-								res.length);
+								rows.length);
 				}
-				callback(null, res[0][foreign.$name]);
+				callback(null, rows[0][foreign.$name]);
 			});
 		});
 };
@@ -131,8 +132,11 @@ ORM.prototype.lookupForeignIds = function () {
 	async.each(cols,
 		function (col, callback) {
 			var field = table[col];
+			if (!field) {
+				throw new Error('Field "' + col + '" not found in table "' +
+					table.$name + '"');
+			}
 			var value = row[col];
-			var foreign = field.references;
 			if (!_(value).isObject()) {
 				return callback(null);
 			}

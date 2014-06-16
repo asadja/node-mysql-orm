@@ -142,7 +142,7 @@ recreate* params to be ignored), don't initialise database, onready is</li>
 <span class="function"><span class="keyword">function</span> <span class="title">ORM</span><span class="params">(schema, defaultdata, options, onready)</span> {</span>
   <span class="keyword">var</span> self = <span class="keyword">this</span>;
   <span class="keyword">this</span>.debug = options.debug || process.env.DEBUG_MYSQL_ORM;
-  <span class="keyword">if</span> (!schema || !options || !onready) {
+  <span class="keyword">if</span> (!schema || !options || (!options.skipChecks &amp;&amp; !onready)) {
     <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">'Required parameter missing'</span>);
   }
   <span class="keyword">if</span> (_(options).has(<span class="string">'logLevel'</span>)) {

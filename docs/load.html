@@ -60,6 +60,8 @@ module.exports = ORM.prototype;
 <li>callback - (err, row)</li>
 </ul>
 
+<p>If now row is found, then an error is returned and row === false.  For other<br />errors, row is undefined.</p>
+
 <p>Same usage as loadMany but obviously the LIMIT specifiers are not used.</p>
 </div>
 <code class="lit-code">
@@ -75,12 +77,12 @@ ORM.prototype.load = <span class="function"><span class="keyword">function</span
       <span class="keyword">return</span> callback(err);
     }
     <span class="keyword">if</span> (res.length === <span class="number">0</span>) {
-      <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Item not found'</span>), <span class="literal">false</span>);
+      <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Item not found'</span>), <span class="literal">null</span>);
     }
     <span class="keyword">else</span> <span class="keyword">if</span> (res.length > <span class="number">1</span>) {
       <span class="keyword">return</span> callback(<span class="keyword">new</span> Error(<span class="string">'Multiple rows were returned for GET '</span> +
         <span class="string">'operation on table '</span>+table.$name+<span class="string">' with criteria '</span> +
-        JSON.stringify(criteria)), <span class="literal">true</span>);
+        JSON.stringify(criteria)));
     }
     callback(<span class="literal">null</span>, res[<span class="number">0</span>]);
   });
@@ -155,7 +157,8 @@ ORM.prototype.loadMany = <span class="function"><span class="keyword">function</
               }
             });
             <span class="comment">/* Lookup references */</span>
-            self.lookupForeignRows(query, table, row, callback);
+            self.lookupForeignValues(query, table, row, options,
+              callback);
           },
           <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> {</span>
             <span class="keyword">if</span> (err) {
