@@ -1,0 +1,5 @@
+Caching of returned rows (redis?)
+
+Can we detect writes to fields and just store which rows to update somehow?
+Time to get dirty with JS for real now...  I recall a __getter__ and __setter__
+on MDN's documentation...
