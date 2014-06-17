@@ -3,3 +3,8 @@ Caching of returned rows (redis?)
 Can we detect writes to fields and just store which rows to update somehow?
 Time to get dirty with JS for real now...  I recall a __getter__ and __setter__
 on MDN's documentation...
+
+auto-values in the database, created when referenced and deleted when no
+references remain.  Basically, many-to-many relationship with delete trigger. A
+good trigger implementation is shown at in Erwin's answer:
+http://stackoverflow.com/questions/15582023/foreign-key-contraints-in-many-to-many-relationships
