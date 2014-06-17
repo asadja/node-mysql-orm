@@ -1,11 +1,24 @@
 mysql-orm [![Build Status](https://travis-ci.org/battlesnake/node-mysql-orm.svg?branch=master)](https://travis-ci.org/battlesnake/node-mysql-orm) [![NPM version](https://badge.fury.io/js/mysql-orm.svg)](http://badge.fury.io/js/mysql-orm)
 ==============
 
-For node.js: MySQL wrapper providing object mapping, automatic table generation via JSON schema, automatic foreign key generation and resolution, indexes, default values, reference options and more.
+MySQL wrapper for node.js with focus on foreign keys. Why bother choosing an RDBMS over NoSQL if you're not using relations and constraints? Usually this is due to the convenience of JOINs and a poor knowledge of SQL's true capabilities...
+
+Relations, referential integrity, lookups and constraints are so easy in this package that you barely realise you're using them. A colon here and there in the very readable JSON schema, create the ORM, and you now have a database with:
+- indexes
+- unique constraints
+- foreign constraints with reference options
+- nullable fields (where you request them)
+- default values (where you request them)
+- automatic creation of missing tables/database
+- automatic initialization of tables that didn't exist (default data specified as JSON)
+- automatic (de)serialization if you provide a serialize and deserialize function
+- automatic JSON fields already provided using the above (de)serialization
+- automatic checking that one and only one record is returned when you just want one.
+- much more to come..
 
 A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.  Inline documentation is provided in the source files, and HTML versions in the docs/ folder.
 
-I recommend using the HTML documentation rather than the documentation below, as the HTML documentation is up-to-date.
+I recommend using the HTML documentation rather than the documentation below, as the HTML documentation is generated from the source files and thus is up-to-date.
 
 # Install
 
@@ -29,23 +42,29 @@ var schema = {
 		'string': 'varchar(64)',
 		'password': 'char(60)',
 		'boolean': 'bit',
-		/* A field of type "country" would be a foreign key to table "countries" */
 		'country': ':countries'
 	},
 
 	users: {
-		/* "id" field is generated automatically */
 		/*
-		 * Dollar-prefix is used for metadata, e.g. specifying the
-		 * default sort order
+		 * If no primary key is found, then the
+		 * "id" field is generated automatically
+		 * as INTEGER AUTO_INCREMENT PRIMARY KEY
+		 *
+		 * A dollar-prefix is used for metadata
+		 * fields such as this one which
+		 * specifies the default sort order for
+		 * rows returned from loadMany().
 		 */
 		$sort: '+username',
 		/* This field must have a unique value (unique: true) */
 		username: { type: 'string', unique: true },
-		password: { type: 'password' },
+		/* This field can be null */
+		password: { type: 'password', nullable: true },
 		role: { type: 'role' },
 		lastactive: { type: 'timestamp' },
-		country: { type: 'country' }
+		/* This field is indexed (index: true) */
+		country: { type: 'country', index: true }
 	},
 
 	roles: {
@@ -58,7 +77,7 @@ var schema = {
 		 * Prefix a sort field by + or - to explicitly set ascending
 		 * or descending sort order
 		 */
-		$sort: '-date',
+		$sort: ['+deleted', '-date'],
 		/*
 		 * Set the ON UPDATE and ON DELETE actions for foreign key
 		 * constraint
@@ -67,13 +86,29 @@ var schema = {
 		/* Index this field (index: true) */
 		title: { type: 'string', index: true },
 		content: { type: 'text' },
-		date: { type: 'timestamp' },
-		deleted: { type: 'boolean' }
+		date: { type: 'timestamp', index: true },
+		deleted: { type: 'boolean', index: true }
 	},
 
 	countries: {
 		$sort: '+name',
 		name: { type: 'string', index: true }
+	},
+	
+	log: {
+		/*
+		 * Specify primary key(s) explicitly as the $primary
+		 * property.  An empty array indicates no primary key.
+		 */
+		$primary: [],
+		/*
+		 * Field definitions can also be specified as a string,
+		 * for convenience.  Not all options supported by the
+		 * object notation are available in the string notation.
+		 */
+		date: 'timestamp,index'.
+		level: 'integer',
+		message: 'varchar(200),nullable'
 	}
 
 };
@@ -95,12 +130,12 @@ var data = {
 	roles: [
 		{ name: 'admin', rights: '*' },
 		{ name: 'ploom', rights: 'being a ploom' },
-		{ name: 'pleb', rights: 'lol' }
+		{ name: 'pleb', rights: '' }
 	],
 
 	/*
-	 * The auto_increment primary key `id` field is created automatically for
-	 * each table
+	 * The auto_increment primary key `id` field was created automatically for
+	 * each table which didn't explicitly specify a primary key.
 	 */
 	countries: [
 		{ id: 44, name: 'United Kingdom' },
@@ -162,11 +197,15 @@ var orm_options = {
 	 */
 	recreateDatabase: false,
 	/*
-	 * CAUTION: Setting this to true will drop the tables mentioned in
+	 * CAUTION: Setting this to true will drop the tables specified in
 	 * the schema then recreate them
 	 */
 	recreateTables: false,
-	/* Causes an annoying delay between each line output by ORM's logger */
+	/*
+	 * Causes an annoying delay between each line output by ORM's logger.
+	 * Useful with logLevel=3, as warnings generate a much longer delay
+	 * than info messages.
+	 */
 	debug: process.env.DEBUG,
 	/*
 	 * Log level (1,2,3=FAIL/WARN/INFO).  See logging.js for more info.
@@ -183,8 +222,6 @@ If `recreateTables` or `recreateDatabase` is specified, then the `data` will be 
 Note that this will not occur if the tables/database are created but the `recreate*` parameters were not set.
 CAUTION: `recreateTables` / `recreateDatabase` are for development purposes only, they WILL cause orm to drop the database and tables if they already exist.
 
-If `skipChecks` is `true` in the options, mysql-orm will not check for existence of the database or the tables, will not regenerate them even if `recreate*` are set, and it will return synchronously.
-
 ```node
 var mysql_orm = require('mysql_orm');
 var orm = null;
@@ -197,7 +234,34 @@ mysql_orm.create(schema, data, orm_options, function (err, ormObject) {
 });
 ```
 
-## Once the callback has returned the orm object, we're good to go!
+If `skipChecks` is `true` in the options, mysql-orm will not check for existence of the database or the tables, will not regenerate them even if `recreate*` are set, and it will return synchronously.
+
+```node
+var mysql_orm = require('mysql_orm');
+
+/* skipChecks: causes synchronous completion */
+var orm = mysql_orm.create(schema, null, {
+	database: 'MyDatabase',
+	mysql: { host: 'localhost', user: 'testUser', password: 'secret' },
+	skipChecks: true 
+});
+
+/*
+ * Callback would be called synchronously if specified as the ORM is created
+ * sychronously if skipChecks===true.  Hence we can use the ORM right away:
+ */
+orm.loadMany(orm.schema.users, { role: { name: 'admin' } }, function (err, admins) {
+	if (err) throw err;
+	admins.forEach(function (admin) {
+		console.log(admin.name + ' is an admin');
+	});
+	process.exit(0);
+});
+```
+
+## Once we have an ORM object, we're good to go!
+
+Use the HTML documentation generated from load.js, save.js, etc in the docs/ folder, rather than this below.  the documentation below is out of date, whereas the docs/ documentation is generated from the source files themselves.
 
 ### Reading (loading records from the database)
 
