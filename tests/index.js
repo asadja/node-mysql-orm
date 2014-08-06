@@ -52,9 +52,10 @@ async.waterfall([
 	function (callback) {
 		currentTest = 'Read/write';
 		test.readwrite(orm, callback);
-	},
+	}
 	],
 	function (err) {
+		orm.destroy();
 		if (err) {
 			console.log('Test "%s" failed: %s', currentTest, err);
 			return process.exit(1);
