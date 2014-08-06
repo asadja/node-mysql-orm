@@ -192,7 +192,7 @@ function ORM(schema, defaultdata, options, onready) {
 			self.connection.end(function () {
 				self.connection = null;
 				if (callback) {
-					callback());
+					callback();
 				}
 			});
 			self.destroy = ORM.prototype.destroy;
