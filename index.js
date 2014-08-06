@@ -187,6 +187,11 @@ function ORM(schema, defaultdata, options, onready) {
 		options.mysql.database = options.database;
 		self.connection = mysql.createPool(options.mysql);
 		self.query = self.loggedQuery(self.connection);
+		/* Assign new destructor to close pool */
+		self.destroy = function () {
+			self.connection.end();
+			self.destroy = self.prototype.destroy;
+		}
 	};
 	/* No checks - connect to the DB and return synchronously */
 	if (options.skipChecks) {
@@ -233,6 +238,11 @@ function ORM(schema, defaultdata, options, onready) {
 
 ORM.prototype = {};
 ORM.prototype.constructor = ORM;
+
+/* Constructor replaces this destructor when a pool has been created */
+/* TODO: Have one destructor only, which checks for existence of open pool/connections rather than this spaghetti code */
+ORM.prototype.destroy = function () {
+};
 
 _(ORM.prototype).extend(require('./logging'));
 _(ORM.prototype).extend(require('./logging-query'));
