@@ -18,7 +18,16 @@ Relations, referential integrity, lookups and constraints are so easy in this pa
 
 A test is given in the `./tests/` folder, which should demonstrate most of the core functionality.  The components of this module (`load.js`, `read.js`, etc) are documented too, giving considerably more detail than this README.  Inline documentation is provided in the source files, and HTML versions in the docs/ folder.
 
-I recommend using the HTML documentation rather than the documentation below, as the HTML documentation is generated from the source files and thus is up-to-date.
+***I recommend using the HTML documentation rather than the documentation below, as the HTML documentation is generated from the source files and thus is up-to-date.***
+
+# Coming soon
+The v0.1.0 milestone will include several bugfixes and extra features.
+
+There will also be a large performance improvement in the foregin key lookups (we will use JOINs as originally intended, the current multiple-SELECT implementation was intended for debugging purposes only).  The only downside of this is that we will lose the "one matching record only" check that is currently done on lookups.  UNIQUE constraints will do a better job of this though and they're already supported.
+
+We might also change the default column name for ID columns, in order to allow JOIN USING / NATURAL JOIN syntax instead of the current JOIN ON syntax which duplicates column names.  There's no real performance advantage as far as I can tell, but it is cleaner [http://code.openark.org/blog/mysql/mysql-joins-on-vs-using-vs-theta-style].
+
+Possibly some kind of analyser that generates a schema from an existing database (or subset of tables within a database).
 
 # Install
 
