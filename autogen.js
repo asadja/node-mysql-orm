@@ -91,7 +91,11 @@ function create_table(orm, table) {
 	var lines = [];
 	lines.push(mysql.format('CREATE TABLE IF NOT EXISTS ?? (', table.$name));
 	lines.push(indent(columns.join(',\n')));
+	if (table.$comment && table.$comment.length) {
+		lines.push(') COMMENT='+mysql.escape(table.$comment)+';');
+	} else {
 	lines.push(');');
+	}
 	return lines.join('\n');
 }
 
