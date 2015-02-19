@@ -106,7 +106,7 @@ function expand_field_shorthand_definition(orm, fullname, def) {
 	if (f.length === 0) {
 		return orm.error(err('No type found'));
 	}
-	field = {};
+	var field = {};
 	field.type = f.shift();
 	field.unique = flag('unique');
 	field.index = flag('index');

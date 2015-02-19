@@ -134,6 +134,7 @@ function parse_schema(orm) {
 	/* Generate FK constraint names */
 	all_refs.forEach(function (field) {
 		field.$fkname = [
+				field.$table.$name,
 				field.$name, 'fk', field.references.$table.$name,
 				field.references.$name
 			].join('_');
