@@ -132,7 +132,15 @@ function column_definition(orm, field) {
 		field.type,
 		field.auto_increment && 'AUTO_INCREMENT',
 		!field.nullable && 'NOT NULL',
-		field.default && ('DEFAULT ' + mysql.escape(def))
+		field.default && (
+			_.isString(def) && def.charAt(0)=='$' && ('DEFAULT ' + def.substring(1))
+			|| ('DEFAULT ' + mysql.escape(def))
+			),
+		field.update && (
+			_.isString(field.update) && field.update.charAt(0)=='$' && ('ON UPDATE ' + field.update.substring(1))
+			|| ('ON UPDATE ' + mysql.escape(field.update))
+			),
+		field.comment && ('COMMENT ' + mysql.escape(field.comment))
 	]).compact().join(' '));
 	return lines.join(',\n');
 };
