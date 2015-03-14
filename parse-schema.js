@@ -56,6 +56,10 @@ function parse_schema(orm) {
 	/* Process fields */
 	names(schema).forEach(function parse_table(tableName) {
 		var table = schema[tableName];
+		/* Add referenced fields */
+		if (table.$ref && table.$ref.length) {
+			_.defaults(table, schema[table.$ref]);
+		}
 		names(table).forEach(function parse_field(fieldName) {
 			var field = table[fieldName];
 			/* Resolve aliases */
@@ -134,6 +138,7 @@ function parse_schema(orm) {
 	/* Generate FK constraint names */
 	all_refs.forEach(function (field) {
 		field.$fkname = [
+				field.$table.$name,
 				field.$name, 'fk', field.references.$table.$name,
 				field.references.$name
 			].join('_');
