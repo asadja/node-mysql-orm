@@ -39,7 +39,7 @@ ORM.prototype.beginTransaction = function (callback) {
 		this.connection.getConnection(gotConnection);
 	}
 	else {
-		gotConnection(this.conncetion);
+		gotConnection(this.connection);
 	}
 	function gotConnection(err, connection) {
 		if (err) {
